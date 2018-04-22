@@ -1,8 +1,11 @@
 
-class ringbuffer
+class RingBuffer
 {
+	int capacity;
+
 public:
-	ringbuffer();
-	~ringbuffer();
+	RingBuffer();
+	int getCapacity();
+	~RingBuffer();
 	
 };

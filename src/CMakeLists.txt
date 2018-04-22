@@ -1,15 +1,20 @@
-set(sources
+message("building ${ringbufferLibaryName} library ")
+
+set(SOURCES
   ringbuffer.cpp
 )
 
-list(APPEND CUSTOM_INCLUDE_DIRECTORIES 
-  "${CMAKE_CURRENT_SOURCE_DIR}/src"
-)
+foreach(filename ${SOURCES})
+	
+	if("${filename}" MATCHES "main.c")
 
-# Build library
-message("building library ${ringbufferLibaryName}")
-# add_library(${ringbufferLibaryName} STATIC ${sources})
-add_executable(${ringbufferLibaryName} ${sources})
+	else("${filename}" MATCHES "main.c")
+		list(APPEND OBJECTS ${filename})
+	endif("${filename}" MATCHES "main.c")
+
+endforeach(filename ${SOURCES})
+
+add_library(${ringbufferLibaryName} STATIC ${SOURCES})
 
 target_include_directories(${ringbufferLibaryName}
     PRIVATE
