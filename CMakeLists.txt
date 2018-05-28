@@ -16,7 +16,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 
 include(cmake/BuildSettings.cmake)
 
-set(CUSTOM_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/src")
+set(CUSTOM_INCLUDE_DIRECTORIES)
 set(ringbufferLibaryName ringbuffer)
 
 add_subdirectory(src)

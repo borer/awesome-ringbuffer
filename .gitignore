@@ -8,7 +8,7 @@ Icon
 
 # Thumbnails
 ._*
-
+.vs/
 bin/
 tmp/
 *.tmp

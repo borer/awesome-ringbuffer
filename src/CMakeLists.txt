@@ -1,23 +1,17 @@
 message("building ${ringbufferLibaryName} library ")
 
-set(SOURCES
-  ringbuffer.cpp
+list(APPEND CUSTOM_INCLUDE_DIRECTORIES 
+  "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
-foreach(filename ${SOURCES})
-	
-	if("${filename}" MATCHES "main.c")
-
-	else("${filename}" MATCHES "main.c")
-		list(APPEND OBJECTS ${filename})
-	endif("${filename}" MATCHES "main.c")
-
-endforeach(filename ${SOURCES})
+set(SOURCES
+  spsc_queue.cpp
+)
 
 add_library(${ringbufferLibaryName} STATIC ${SOURCES})
 
 target_include_directories(${ringbufferLibaryName}
-    PRIVATE
+    PUBLIC 
     ${CUSTOM_INCLUDE_DIRECTORIES}
 )
 
@@ -27,11 +21,11 @@ set_target_properties(${ringbufferLibaryName}
 )
 
 target_compile_definitions(${ringbufferLibaryName}
-    PRIVATE
+    PUBLIC 
     ${DEFAULT_COMPILE_DEFINITIONS}
 )
 
 target_compile_options(${ringbufferLibaryName}
-    PRIVATE
+    PUBLIC 
     ${DEFAULT_COMPILE_OPTIONS}
 )

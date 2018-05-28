@@ -3,8 +3,6 @@ list(APPEND CUSTOM_INCLUDE_DIRECTORIES
   "../src/"
 )
 
-include_directories(${CUSTOM_INCLUDE_DIRECTORIES})
-
 file(GLOB TEST_SOURCES *.cpp)
 
 enable_testing()
@@ -12,7 +10,14 @@ enable_testing()
 foreach(filename ${TEST_SOURCES})
 	get_filename_component(testname ${filename} NAME_WE)
 
-	add_executable(${testname} ${OBJECTS} ${filename})
+	add_executable(${testname} ${filename})
+
+	message("include dirs for ${filename} : ${CUSTOM_INCLUDE_DIRECTORIES}")
+
+	target_include_directories(${testname}
+	    PRIVATE
+	    ${CUSTOM_INCLUDE_DIRECTORIES}
+	)
 
     set_target_properties(${testname}
         PROPERTIES
@@ -30,6 +35,7 @@ foreach(filename ${TEST_SOURCES})
 	)
 	
 	target_link_libraries(${testname} 
+		LINK_PUBLIC 
 		${ringbufferLibaryName}
 	)
 	
