@@ -1,7 +1,36 @@
 #include <cstring>
 #include "spsc_queue.h"
  
-SpscQueue::SpscQueue(size_t size)
+#define MSG_DATA_TYPE 0x01
+#define MSG_PADDING_TYPE 0x02
+
+class record_header
+{
+	unsigned long msgLength;
+	char msgType;
+public:
+	void setLength(unsigned long lenght)
+	{
+		this->msgLength = lenght;
+	}
+
+	unsigned long getLenght()
+	{
+		return this->msgLength;
+	}
+
+	void setType(char type)
+	{
+		this->msgType = type;
+	}
+
+	char getType()
+	{
+		return this->msgType;
+	}
+};
+
+SpscQueue::SpscQueue(unsigned long size)
 {
    this->capacity = size;
    this->buffer = new uint8_t[size];
@@ -13,7 +42,7 @@ int SpscQueue::getCapacity()
 	return this->capacity;
 }
 
-WriteStatus SpscQueue::write(const void* msg, size_t offset, size_t lenght)
+WriteStatus SpscQueue::write(const void* msg, unsigned long offset, unsigned long lenght)
 {
 	size_t recordHeaderLength = sizeof(record_header);
 	size_t recordLength = lenght + recordHeaderLength;
@@ -29,7 +58,7 @@ WriteStatus SpscQueue::write(const void* msg, size_t offset, size_t lenght)
 
 	//not enought space
 	if (this->tail + recordLength == this->head ||
-		this->tail < this->head && this->tail + recordLength >= this->head)
+		this->head > this->tail && this->tail + recordLength >= this->head)
 	{
 		return WriteStatus::QUEUE_FULL;
 	}
@@ -37,7 +66,7 @@ WriteStatus SpscQueue::write(const void* msg, size_t offset, size_t lenght)
 	//we need to wrap
 	if (this->tail + recordLength >= this->capacity)
 	{
-		if (recordLength < this->head)
+		if (this->head < recordLength)
 		{
 			return WriteStatus::QUEUE_FULL;
 		}
@@ -56,7 +85,7 @@ WriteStatus SpscQueue::write(const void* msg, size_t offset, size_t lenght)
 	void* bufferOffset = (void*)&this->buffer[tail + recordHeaderLength];
 	std::memcpy(bufferOffset, (const void*)((uint8_t*)msg + offset), lenght);
 
-	this->tail =+ recordLength;
+	this->tail = this->tail + recordLength;
 
 	return WriteStatus::SUCCESSFUL;
 }
@@ -74,7 +103,8 @@ void SpscQueue::read(MessageHandler* handler)
 	}
 
 	record_header* header = (record_header*)&this->buffer[head];
-	size_t msgLength = header->getLenght();
+	unsigned long msgLength = header->getLenght();
+	size_t headerSize = sizeof(record_header);
 	if (header->getType() == MSG_PADDING_TYPE)
 	{
 		this->head += msgLength;
@@ -87,10 +117,10 @@ void SpscQueue::read(MessageHandler* handler)
 		msgLength = header->getLenght();
 	}
 
-	uint8_t* msg = (uint8_t*)&this->buffer[head + sizeof(record_header)];
+	uint8_t* msg = (uint8_t*)&this->buffer[head + headerSize];
 	handler->onMessage(msg, msgLength);
 
-	this->head += msgLength;
+	this->head = this->head + msgLength + headerSize;
 }
 
 SpscQueue::~SpscQueue()

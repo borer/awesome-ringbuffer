@@ -1,42 +1,11 @@
 #include <cstddef>
 #include <cstdint>
 
-#define MSG_DATA_TYPE 0x01
-#define MSG_PADDING_TYPE 0x02
-
-#define PARK_NANOS 10
-
 class MessageHandler
 {
 public:
-	virtual void onMessage(const uint8_t* buffer, size_t lenght) = 0;
+	virtual void onMessage(const uint8_t* buffer, unsigned long lenght) = 0;
 	virtual ~MessageHandler() {}
-};
-
-class record_header
-{
-	size_t msgLength;
-	char msgType;
-public:
-	void setLength(size_t lenght)
-	{
-		this->msgLength = lenght;
-	}
-
-	size_t getLenght()
-	{
-		return this->msgLength;
-	}
-
-	void setType(char type)
-	{
-		this->msgType = type;
-	}
-
-	char getType()
-	{
-		return this->msgType;
-	}
 };
 
 enum WriteStatus
@@ -50,15 +19,24 @@ enum WriteStatus
 class SpscQueue
 {
 	uint8_t* buffer;
-	size_t capacity;
-	size_t head;
-	size_t tail;
+	unsigned long capacity;
+	unsigned long head;
+	unsigned long tail;
 
 public:
-	SpscQueue(size_t size);
-	WriteStatus write(const void* msg, size_t offset, size_t lenght);
+	SpscQueue(unsigned long size);
+	WriteStatus write(const void* msg, unsigned long offset, unsigned long lenght);
 	void read(MessageHandler* handler);
 	int getCapacity();
 	~SpscQueue();
 	
+	unsigned long getTail()
+	{
+		return tail;
+	}
+
+	unsigned long getHead()
+	{
+		return head;
+	}
 };
