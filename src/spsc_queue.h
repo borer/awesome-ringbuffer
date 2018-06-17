@@ -1,5 +1,6 @@
 #include <cstddef>
 #include <cstdint>
+#include <atomic>
 
 class MessageHandler
 {
@@ -20,11 +21,13 @@ class SpscQueue
 {
 	uint8_t* buffer;
 	unsigned long capacity;
-	unsigned long head;
+	std::atomic<unsigned long> head;
 	unsigned long tail;
+	std::atomic<unsigned long> totalStoredSize;
+	unsigned long totalReadSize;
 
 public:
-	SpscQueue(unsigned long size);
+	SpscQueue(unsigned long capacity);
 	WriteStatus write(const void* msg, unsigned long offset, unsigned long lenght);
 	void read(MessageHandler* handler);
 	int getCapacity();
