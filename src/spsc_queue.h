@@ -5,7 +5,7 @@
 class MessageHandler
 {
 public:
-	virtual void onMessage(const uint8_t* buffer, unsigned long lenght) = 0;
+	virtual void onMessage(const uint8_t* buffer, unsigned long lenght, unsigned long messageSequence) = 0;
 	virtual ~MessageHandler() {}
 };
 
@@ -25,6 +25,8 @@ class SpscQueue
 	unsigned long tail;
 	std::atomic<unsigned long> totalStoredSize;
 	unsigned long totalReadSize;
+	unsigned long messageSequence;
+	size_t recordHeaderLength;
 
 public:
 	SpscQueue(unsigned long capacity);
@@ -41,5 +43,15 @@ public:
 	unsigned long getHead()
 	{
 		return head;
+	}
+
+	unsigned long getTotalReadSize()
+	{
+		return totalReadSize;
+	}
+
+	unsigned long getTotalStoreSize()
+	{
+		return totalStoredSize;
 	}
 };
