@@ -26,22 +26,14 @@ public:
 	void onMessage(const uint8_t* buffer, unsigned long length, unsigned long sequence)
 	{
 		Message* message = (Message*)buffer;
-		if (msgSequence + 1 != message->sequence)
+		if (msgSequence + 1 == sequence)
 		{
-			std::cout << "Expected " << msgSequence + 1 << " got  from msg " << message->sequence << std::endl;
-			if (msgSequence + 1 == sequence)
-			{
-				msgSequence = sequence;
-			}
-			else
-			{
-				std::cout << "Expected " << msgSequence + 1 << " got from ringbuffer " << sequence << std::endl;
-				invalidState = true;
-			}
+			msgSequence = sequence;
 		}
 		else
 		{
-			msgSequence = message->sequence;
+			std::cout << "Expected " << msgSequence + 1 << " got from ringbuffer " << sequence << std::endl;
+			invalidState = true;
 		}
 	};
 

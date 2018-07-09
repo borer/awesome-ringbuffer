@@ -89,7 +89,7 @@ WriteStatus SpscQueue::write(const void* msg, unsigned long offset, unsigned lon
 			RecordHeader* header = (RecordHeader*)&this->buffer[this->tail];
 			long paddingSize = this->capacity - this->tail - sizeof(RecordHeader);
 			header->writePaddingMsg(paddingSize);
-			storedSize = storedSize + paddingSize;
+			storedSize = storedSize + paddingSize + sizeof(RecordHeader);
 		}
 		else
 		{
@@ -125,7 +125,7 @@ void SpscQueue::read(MessageHandler* handler)
 
 	if (this->totalReadSize > totalStoredSize)
 	{
-		std::cout << "should never happen" << std::endl;
+		std::cout << "should never happen " << this->totalReadSize << " ,stored " << totalStoredSize << std::endl;
 	}
 
 	if (this->head == this->capacity)
