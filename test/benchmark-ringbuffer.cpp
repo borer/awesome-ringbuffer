@@ -2,6 +2,7 @@
 #include <string>
 #include <thread>
 #include <chrono>
+#include <ctime>
 
 #include "spsc_queue.h"
 
@@ -9,12 +10,6 @@ typedef struct Message
 {
 	long sequence;
 	const char* name;
-
-	Message(long sequence, const char* name)
-	{
-		this->sequence = sequence;
-		this->name = name;
-	}
 };
 
 class TestMessageHandler : public MessageHandler
@@ -37,7 +32,7 @@ public:
 		}
 	};
 
-	long getMsgSequence()
+	unsigned long getMsgSequence()
 	{
 		return msgSequence;
 	}
@@ -56,6 +51,7 @@ public:
 void consumerTask(SpscQueue* queue)
 {
 	TestMessageHandler* handler = new TestMessageHandler();
+	auto start = std::chrono::system_clock::now();
 	while (true)
 	{
 		queue->read((MessageHandler*)handler);
@@ -70,6 +66,18 @@ void consumerTask(SpscQueue* queue)
 				<< std::endl;
 			break;
 		}
+
+		if (handler->getMsgSequence() > 100000000)
+		{
+			auto end = std::chrono::system_clock::now();
+			std::chrono::duration<double> elapsed_seconds = end - start;
+			std::time_t end_time = std::chrono::system_clock::to_time_t(end);
+
+			std::cout << "finished computation at " << std::ctime(&end_time)
+				<< "elapsed time: " << elapsed_seconds.count() << "s\n" << std::endl;
+
+			exit(0);
+		}
 	}
 }
 
@@ -77,10 +85,12 @@ void publisherTask(SpscQueue* queue)
 {
 	long numMessage = 0;
 	size_t msgSize = sizeof(Message);
+	Message* msg = new Message();
 	while (true)
 	{
 		numMessage++;
-		const Message* msg = new Message(numMessage, "fixed name");
+		msg->name = "fixed name";
+		msg->sequence = numMessage;
 		WriteStatus status = queue->write(msg, 0, msgSize);
 		int numberTries = 0;
 		bool isTrying = false;
@@ -123,11 +133,6 @@ void publisherTask(SpscQueue* queue)
 			}
 			break;
 		}
-
-		/*if (numMessage % 1000 == 0)
-		{
-			std::cout << numMessage << std::endl;
-		}*/
 	}
 }
 
