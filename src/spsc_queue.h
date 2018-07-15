@@ -31,7 +31,6 @@ class SpscQueue
 	unsigned long privateCacheTail; //used locally by write
 
 	unsigned long messageSequence;
-	size_t recordHeaderLength;
 	unsigned int batchSize;
 
 public:
