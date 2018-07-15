@@ -97,10 +97,10 @@ void publisherTask(SpscQueue* queue, long numberMessages)
 			{
 				std::cout << "Is trying to write message " << i <<  std::endl;
 				std::cout << "Writing msg : " << msg 
-					<< ", head: " << queue->getHead() 
-					<< ", tail: " << queue->getTail() 
-					<< ", readSize: " << queue->getTotalReadSize() 
-					<< ", storeSize: " << queue->getTotalStoreSize() 
+					<< ", head: " << queue->getHead()
+					<< ", headPosition: " << queue->getHeadPosition()
+					<< ", tail: " << queue->getTail()
+					<< ", tailPosition: " << queue->getTailPosition()
 					<< std::endl;
 				isTrying = true;
 			}

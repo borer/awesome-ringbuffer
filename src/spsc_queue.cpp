@@ -38,9 +38,8 @@ SpscQueue::SpscQueue(unsigned long capacity)
 {
    this->capacity = capacity;
    this->buffer = new uint8_t[capacity];
-   this->head = this->tail = 0;
-   this->totalStoredSize = 0;
-   this->totalReadSize = 0;
+   this->head = 0;
+this->tail = 0;
    this->messageSequence = 0;
    this->recordHeaderLength = sizeof(RecordHeader);
 }
@@ -56,7 +55,6 @@ WriteStatus SpscQueue::write(const void* msg, unsigned long offset, unsigned lon
 	//std::cout << "chead " << cacheHead << std::endl;
 
 	size_t recordLength = lenght + recordHeaderLength;
-	size_t storedSize = recordLength;
 
 	if (msg == nullptr)
 	{
@@ -67,104 +65,95 @@ WriteStatus SpscQueue::write(const void* msg, unsigned long offset, unsigned lon
 		return WriteStatus::MSG_TOO_BIG;
 	}
 
-	bool isOverridingNonReadData = cacheHead > this->tail && this->tail + recordLength >= cacheHead;
+	unsigned long localTail = this->tail.load(std::memory_order_relaxed);
+	unsigned long localTailPosition = localTail % this->capacity;
+
+	bool isOverridingNonReadData = (localTail + recordLength) - cacheHead >= this->capacity;
 	if (isOverridingNonReadData)
 	{
 		return WriteStatus::QUEUE_FULL;
 	}
 
-	bool isNeedForWrap = this->tail + recordLength >= this->capacity;
+	bool isNeedForWrap = localTailPosition + recordLength >= this->capacity;
 	if (isNeedForWrap)
 	{
-		bool isEnoughtSpaceOnceWraped = cacheHead < recordLength;
-		if (isEnoughtSpaceOnceWraped)
-		{
-			return WriteStatus::QUEUE_FULL;
-		}
-
 		//don't write padding header if there is not enought space and just wrap
-		unsigned long remainingCapacity = this->capacity - this->tail;
+		unsigned long remainingCapacity = this->capacity - localTailPosition;
 		if (remainingCapacity > recordHeaderLength)
 		{
-			RecordHeader* header = (RecordHeader*)&this->buffer[this->tail];
-			long paddingSize = this->capacity - this->tail - sizeof(RecordHeader);
+			RecordHeader* header = (RecordHeader*)&this->buffer[localTailPosition];
+			long paddingSize = this->capacity - localTailPosition - recordHeaderLength;
 			header->writePaddingMsg(paddingSize);
-			storedSize = storedSize + paddingSize + sizeof(RecordHeader);
+			localTail = localTail + paddingSize + recordHeaderLength;
 		}
 		else
 		{
-			storedSize = storedSize + remainingCapacity;
+			localTail = localTail + remainingCapacity;
 		}
 
-		this->tail = 0;
+		localTailPosition = localTail % this->capacity;
 	}
 
 	//store the message header - msg size
 	//TODO what about message size alingment ?
-	RecordHeader* header = (RecordHeader*)&this->buffer[this->tail];
+	RecordHeader* header = (RecordHeader*)&this->buffer[localTailPosition];
 	this->messageSequence++;
 	header->writeDataMsg(lenght, this->messageSequence);
 
 	//store the message contents
-	void* bufferOffset = (void*)&this->buffer[this->tail + recordHeaderLength];
+	void* bufferOffset = (void*)&this->buffer[localTailPosition + recordHeaderLength];
 	std::memcpy(bufferOffset, (const void*)((uint8_t*)msg + offset), lenght);
 
-	this->tail = this->tail + recordLength;
-	this->totalStoredSize.store(this->totalStoredSize + storedSize, std::memory_order_release);
+	localTail = localTail + recordLength;
+	this->tail.store(localTail, std::memory_order_release);
 
 	return WriteStatus::SUCCESSFUL;
 }
 
 void SpscQueue::read(MessageHandler* handler)
 {
-	unsigned long totalStoredSize = this->totalStoredSize.load(std::memory_order_acquire);
-	if (this->totalReadSize == totalStoredSize)
+	unsigned long cacheTail = this->tail.load(std::memory_order_acquire);
+	unsigned long localHead = this->head.load(std::memory_order_relaxed);
+	unsigned long localHeadPosition = localHead % this->capacity;
+	if (localHead == cacheTail)
 	{
 		return;
 	}
 
-	if (this->totalReadSize > totalStoredSize)
+	if (localHead > cacheTail)
 	{
-		std::cout << "should never happen " << this->totalReadSize << " ,stored " << totalStoredSize << std::endl;
+		std::cout << "should never happen " << localHead << " ,stored " << cacheTail << std::endl;
 	}
 
-	if (this->head == this->capacity)
-	{
-		this->head = 0;
-	}
-
-	RecordHeader* header = (RecordHeader*)&this->buffer[this->head];
+	RecordHeader* header = (RecordHeader*)&this->buffer[localHeadPosition];
 	unsigned long msgLength = header->length;
-	size_t readSize = msgLength + recordHeaderLength;
 	if (header->type == MSG_PADDING_TYPE)
 	{
-		std::memset((void*)&this->buffer[this->head], 0, msgLength + recordHeaderLength);
-		this->head = this->head + recordHeaderLength + msgLength;
-		if (this->head == this->capacity)
-		{
-			this->head = 0;
-		}
+		std::memset((void*)&this->buffer[localHeadPosition], 0, msgLength + recordHeaderLength);
+		localHead = localHead + recordHeaderLength + msgLength;
+		localHeadPosition = localHead % this->capacity;
 
-		header = (RecordHeader*)&this->buffer[this->head];
+		header = (RecordHeader*)&this->buffer[localHeadPosition];
 		msgLength = header->length;
-		readSize = readSize + msgLength + recordHeaderLength;
 	}
 
 	//TODO add multiple messages read if available
-	uint8_t* msg = (uint8_t*)&this->buffer[this->head + recordHeaderLength];
+	uint8_t* msg = (uint8_t*)&this->buffer[localHeadPosition + recordHeaderLength];
 	handler->onMessage(msg, msgLength, header->sequence);
 
+	std::memset((void*)&this->buffer[localHeadPosition], 0, msgLength + recordHeaderLength);
+	localHead = localHead + msgLength + recordHeaderLength;
+	localHeadPosition = localHead % this->capacity;
+
 	//wrap to the start if the remaining capacity is less than a record header even to fit in
-	unsigned long remainingCapacity = this->capacity - this->head;
+	unsigned long remainingCapacity = this->capacity - localHeadPosition;
 	if (remainingCapacity < recordHeaderLength)
 	{
-		readSize = readSize + remainingCapacity;
-		this->head = 0;
+		localHead = localHead + remainingCapacity;
+		localHeadPosition = localHead % this->capacity;
 	}
 
-	std::memset((void*)&this->buffer[this->head], 0, msgLength + recordHeaderLength);
-	this->head.store(this->head + msgLength + recordHeaderLength, std::memory_order_release);
-	this->totalReadSize = this->totalReadSize + readSize;
+	this->head.store(localHead, std::memory_order_release);
 }
 
 SpscQueue::~SpscQueue()

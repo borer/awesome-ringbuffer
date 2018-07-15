@@ -58,11 +58,11 @@ void consumerTask(SpscQueue* queue)
 
 		if (handler->isInvalidState())
 		{
-			std::cout << "Writing msg : " << handler->getMsgSequence() << " (size " << 12 + sizeof(Message) << " ) "
+			std::cout << "Last read msg : " << handler->getMsgSequence() << " (size " << 12 + sizeof(Message) << " ) "
 				<< ", head: " << queue->getHead()
+				<< ", headPosition: " << queue->getHeadPosition()
 				<< ", tail: " << queue->getTail()
-				<< ", readSize: " << queue->getTotalReadSize()
-				<< ", storeSize: " << queue->getTotalStoreSize()
+				<< ", tailPosition: " << queue->getTailPosition()
 				<< std::endl;
 			break;
 		}
@@ -96,13 +96,14 @@ void publisherTask(SpscQueue* queue)
 		bool isTrying = false;
 		while (status != WriteStatus::SUCCESSFUL)
 		{
-			if (!isTrying && numberTries == 100)
+			if (!isTrying && numberTries == 2)
 			{
 				std::cout << "Is trying to write message : " << numMessage
 					<< ", head: " << queue->getHead()
+					<< ", headPosition: " << queue->getHeadPosition()
 					<< ", tail: " << queue->getTail()
-					<< ", readSize: " << queue->getTotalReadSize()
-					<< ", storeSize: " << queue->getTotalStoreSize()
+					<< ", tailPosition: " << queue->getTailPosition()
+					<< ", error code " << status
 					<< std::endl;
 				isTrying = true;
 			}

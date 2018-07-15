@@ -22,9 +22,7 @@ class SpscQueue
 	uint8_t* buffer;
 	unsigned long capacity;
 	std::atomic<unsigned long> head;
-	unsigned long tail;
-	std::atomic<unsigned long> totalStoredSize;
-	unsigned long totalReadSize;
+	std::atomic<unsigned long> tail;
 	unsigned long messageSequence;
 	size_t recordHeaderLength;
 
@@ -40,18 +38,18 @@ public:
 		return tail;
 	}
 
+	unsigned long getTailPosition()
+	{
+		return tail & (capacity - 1);
+	}
+
 	unsigned long getHead()
 	{
 		return head;
 	}
 
-	unsigned long getTotalReadSize()
+	unsigned long getHeadPosition()
 	{
-		return totalReadSize;
-	}
-
-	unsigned long getTotalStoreSize()
-	{
-		return totalStoredSize;
+		return head & (capacity - 1);
 	}
 };
