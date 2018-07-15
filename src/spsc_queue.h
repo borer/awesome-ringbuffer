@@ -22,12 +22,15 @@ class SpscQueue
 	uint8_t* buffer;
 	unsigned long capacity;
 	std::atomic<unsigned long> head;
+	unsigned long cacheHead;
 	std::atomic<unsigned long> tail;
+	unsigned long cacheTail;
 	unsigned long messageSequence;
 	size_t recordHeaderLength;
+	unsigned int batchSize;
 
 public:
-	SpscQueue(unsigned long capacity);
+	SpscQueue(unsigned long capacity, unsigned int batchSize = 10);
 	WriteStatus write(const void* msg, unsigned long offset, unsigned long lenght);
 	void read(MessageHandler* handler);
 	int getCapacity();

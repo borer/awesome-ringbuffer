@@ -34,14 +34,17 @@ typedef struct
 	}
 } RecordHeader;
 
-SpscQueue::SpscQueue(unsigned long capacity)
+SpscQueue::SpscQueue(unsigned long capacity, unsigned int batchSize)
 {
    this->capacity = capacity;
    this->buffer = new uint8_t[capacity];
    this->head = 0;
-this->tail = 0;
+   this->cacheHead = 0;
+   this->tail = 0;
+   this->cacheTail = 0;
    this->messageSequence = 0;
    this->recordHeaderLength = sizeof(RecordHeader);
+   this->batchSize = batchSize;
 }
 
 int SpscQueue::getCapacity()
@@ -51,9 +54,6 @@ int SpscQueue::getCapacity()
 
 WriteStatus SpscQueue::write(const void* msg, unsigned long offset, unsigned long lenght)
 {
-	unsigned long cacheHead = this->head.load(std::memory_order_acquire);
-	//std::cout << "chead " << cacheHead << std::endl;
-
 	size_t recordLength = lenght + recordHeaderLength;
 
 	if (msg == nullptr)
@@ -68,10 +68,15 @@ WriteStatus SpscQueue::write(const void* msg, unsigned long offset, unsigned lon
 	unsigned long localTail = this->tail.load(std::memory_order_relaxed);
 	unsigned long localTailPosition = localTail % this->capacity;
 
-	bool isOverridingNonReadData = (localTail + recordLength) - cacheHead >= this->capacity;
+	bool isOverridingNonReadData = (localTail + recordLength) - this->cacheHead >= this->capacity;
 	if (isOverridingNonReadData)
 	{
-		return WriteStatus::QUEUE_FULL;
+		this->cacheHead = this->head.load(std::memory_order_acquire);
+		bool isStillOverridingNonReadData = (localTail + recordLength) - this->cacheHead >= this->capacity;
+		if (isStillOverridingNonReadData)
+		{
+			return WriteStatus::QUEUE_FULL;
+		}
 	}
 
 	bool isNeedForWrap = localTailPosition + recordLength >= this->capacity;
@@ -112,48 +117,58 @@ WriteStatus SpscQueue::write(const void* msg, unsigned long offset, unsigned lon
 
 void SpscQueue::read(MessageHandler* handler)
 {
-	unsigned long cacheTail = this->tail.load(std::memory_order_acquire);
 	unsigned long localHead = this->head.load(std::memory_order_relaxed);
 	unsigned long localHeadPosition = localHead % this->capacity;
-	if (localHead == cacheTail)
+
+	if (localHead == this->cacheTail)
 	{
-		return;
+		this->cacheTail = this->tail.load(std::memory_order_acquire);
+		if (localHead == this->cacheTail)
+		{
+			return;
+		}
 	}
 
-	if (localHead > cacheTail)
+	unsigned int currentBatchIteration = 0;
+	while (localHead < this->cacheTail && currentBatchIteration < this->batchSize)
 	{
-		std::cout << "should never happen " << localHead << " ,stored " << cacheTail << std::endl;
-	}
+		if (localHead > this->cacheTail)
+		{
+			std::cout << "should never happen " << localHead << " ,stored " << cacheTail << std::endl;
+			break;
+		}
 
-	RecordHeader* header = (RecordHeader*)&this->buffer[localHeadPosition];
-	unsigned long msgLength = header->length;
-	if (header->type == MSG_PADDING_TYPE)
-	{
+		RecordHeader* header = (RecordHeader*)&this->buffer[localHeadPosition];
+		unsigned long msgLength = header->length;
+		if (header->type == MSG_PADDING_TYPE)
+		{
+			std::memset((void*)&this->buffer[localHeadPosition], 0, msgLength + recordHeaderLength);
+			localHead = localHead + recordHeaderLength + msgLength;
+			localHeadPosition = localHead % this->capacity;
+
+			header = (RecordHeader*)&this->buffer[localHeadPosition];
+			msgLength = header->length;
+		}
+
+		//TODO add multiple messages read if available
+		uint8_t* msg = (uint8_t*)&this->buffer[localHeadPosition + recordHeaderLength];
+		handler->onMessage(msg, msgLength, header->sequence);
+
 		std::memset((void*)&this->buffer[localHeadPosition], 0, msgLength + recordHeaderLength);
-		localHead = localHead + recordHeaderLength + msgLength;
+		localHead = localHead + msgLength + recordHeaderLength;
 		localHeadPosition = localHead % this->capacity;
 
-		header = (RecordHeader*)&this->buffer[localHeadPosition];
-		msgLength = header->length;
+		//wrap to the start if the remaining capacity is less than a record header even to fit in
+		unsigned long remainingCapacity = this->capacity - localHeadPosition;
+		if (remainingCapacity < recordHeaderLength)
+		{
+			localHead = localHead + remainingCapacity;
+			localHeadPosition = localHead % this->capacity;
+		}
+
+		currentBatchIteration++;
+		this->head.store(localHead, std::memory_order_release);
 	}
-
-	//TODO add multiple messages read if available
-	uint8_t* msg = (uint8_t*)&this->buffer[localHeadPosition + recordHeaderLength];
-	handler->onMessage(msg, msgLength, header->sequence);
-
-	std::memset((void*)&this->buffer[localHeadPosition], 0, msgLength + recordHeaderLength);
-	localHead = localHead + msgLength + recordHeaderLength;
-	localHeadPosition = localHead % this->capacity;
-
-	//wrap to the start if the remaining capacity is less than a record header even to fit in
-	unsigned long remainingCapacity = this->capacity - localHeadPosition;
-	if (remainingCapacity < recordHeaderLength)
-	{
-		localHead = localHead + remainingCapacity;
-		localHeadPosition = localHead % this->capacity;
-	}
-
-	this->head.store(localHead, std::memory_order_release);
 }
 
 SpscQueue::~SpscQueue()
