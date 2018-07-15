@@ -21,10 +21,15 @@ class SpscQueue
 {
 	uint8_t* buffer;
 	unsigned long capacity;
+
 	std::atomic<unsigned long> head;
-	unsigned long cacheHead;
+	unsigned long cacheHead; //used locally by writes
+	unsigned long privateCacheHead; //used locally by read
+
 	std::atomic<unsigned long> tail;
-	unsigned long cacheTail;
+	unsigned long cacheTail; //used locally by read
+	unsigned long privateCacheTail; //used locally by write
+
 	unsigned long messageSequence;
 	size_t recordHeaderLength;
 	unsigned int batchSize;
