@@ -142,7 +142,7 @@ int main(int argc, char **argv)
 	unsigned long capacity = 1024000; //1 MiB in bytes
 
 	std::cout << "Init" << std::endl;
-	SpscQueue myRingBuffer(capacity);
+	SpscQueue myRingBuffer(capacity, 100);
 	std::cout << "Created RingBuffer with size : " << myRingBuffer.getCapacity() << std::endl;
 
 	std::thread publisherThread(publisherTask, &myRingBuffer);

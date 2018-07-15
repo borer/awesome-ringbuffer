@@ -7,6 +7,8 @@
 #define MSG_PADDING_TYPE 0x02
 #define MSG_HEADER_ENDING 0xbb
 
+//#define ZERO_OUT_READ_MEMORY
+
 typedef struct
 {
 	unsigned long length;
@@ -118,7 +120,6 @@ WriteStatus SpscQueue::write(const void* msg, unsigned long offset, unsigned lon
 void SpscQueue::read(MessageHandler* handler)
 {
 	unsigned long localHead = this->head.load(std::memory_order_relaxed);
-	unsigned long localHeadPosition = localHead % this->capacity;
 
 	if (localHead == this->cacheTail)
 	{
@@ -138,11 +139,14 @@ void SpscQueue::read(MessageHandler* handler)
 			break;
 		}
 
+		unsigned long localHeadPosition = localHead % this->capacity;
 		RecordHeader* header = (RecordHeader*)&this->buffer[localHeadPosition];
 		unsigned long msgLength = header->length;
 		if (header->type == MSG_PADDING_TYPE)
 		{
-			std::memset((void*)&this->buffer[localHeadPosition], 0, msgLength + recordHeaderLength);
+			#ifdef ZERO_OUT_READ_MEMORY
+				std::memset((void*)&this->buffer[localHeadPosition], 0, msgLength + recordHeaderLength);
+			#endif
 			localHead = localHead + recordHeaderLength + msgLength;
 			localHeadPosition = localHead % this->capacity;
 
@@ -154,7 +158,9 @@ void SpscQueue::read(MessageHandler* handler)
 		uint8_t* msg = (uint8_t*)&this->buffer[localHeadPosition + recordHeaderLength];
 		handler->onMessage(msg, msgLength, header->sequence);
 
-		std::memset((void*)&this->buffer[localHeadPosition], 0, msgLength + recordHeaderLength);
+		#ifdef ZERO_OUT_READ_MEMORY
+			std::memset((void*)&this->buffer[localHeadPosition], 0, msgLength + recordHeaderLength);
+		#endif
 		localHead = localHead + msgLength + recordHeaderLength;
 		localHeadPosition = localHead % this->capacity;
 
@@ -163,7 +169,6 @@ void SpscQueue::read(MessageHandler* handler)
 		if (remainingCapacity < recordHeaderLength)
 		{
 			localHead = localHead + remainingCapacity;
-			localHeadPosition = localHead % this->capacity;
 		}
 
 		currentBatchIteration++;
