@@ -166,10 +166,10 @@ void SpscQueue::read(MessageHandler* handler)
 		}
 
 		currentBatchIteration++;
-		this->head.store(localHead, std::memory_order_release);
 	}
 
 	this->privateCacheHead = localHead;
+	this->head.store(localHead, std::memory_order_release);
 }
 
 SpscQueue::~SpscQueue()
