@@ -1,4 +1,5 @@
 #include <cstring>
+#include <cassert>
 #include "spsc_queue.h"
 
 //#define ZERO_OUT_READ_MEMORY
@@ -23,6 +24,11 @@
 
 #define RECORD_HEADER_LENGTH sizeof(RecordHeader)
 
+#define ALIGNMENT (2 * sizeof(int32_t))
+#define IS_POWER_OF_TWO(value) ((value) > 0 && (((value) & (~(value) + 1)) == (value)))
+#define ALIGN(value, alignment) (((value) + ((alignment) - 1)) & ~((alignment) - 1))
+#define GET_POSITION(value, capacity) value & (capacity - 1)
+
 typedef struct
 {
 	unsigned long length;
@@ -35,8 +41,10 @@ typedef struct
 
 SpscQueue::SpscQueue(unsigned long capacity, unsigned int batchSize)
 {
+   assert(IS_POWER_OF_TWO(capacity));
+
    this->capacity = capacity;
-   this->buffer = new uint8_t[capacity];
+   this->buffer = new uint8_t[this->capacity];
    this->head = 0;
    this->cacheHead = 0;
    this->privateCacheHead = 0;
@@ -56,7 +64,8 @@ int SpscQueue::getCapacity()
 
 WriteStatus SpscQueue::write(const void* msg, unsigned long offset, unsigned long lenght)
 {
-	size_t recordLength = lenght + RECORD_HEADER_LENGTH;
+	size_t alignedLength = ALIGN(lenght, ALIGNMENT);
+	size_t recordLength = alignedLength + RECORD_HEADER_LENGTH;
 
 	if (recordLength >= this->capacity)
 	{
@@ -64,7 +73,7 @@ WriteStatus SpscQueue::write(const void* msg, unsigned long offset, unsigned lon
 	}
 
 	unsigned long localTail = this->privateCacheTail;
-	unsigned long localTailPosition = localTail % this->capacity;
+	unsigned long localTailPosition = GET_POSITION(localTail, this->capacity);
 
 	bool isOverridingNonReadData = (localTail + recordLength) - this->cacheHead >= this->capacity;
 	if (isOverridingNonReadData)
@@ -94,14 +103,14 @@ WriteStatus SpscQueue::write(const void* msg, unsigned long offset, unsigned lon
 			localTail = localTail + remainingCapacity;
 		}
 
-		localTailPosition = localTail % this->capacity;
+		localTailPosition = GET_POSITION(localTail, this->capacity);
 	}
 
 	//store the message header
 	//TODO what about message size alingment ?
 	RecordHeader* header = (RecordHeader*)(this->buffer + localTailPosition);
 	this->messageSequence++;
-	WRITE_DATA_MSG(header, lenght, this->messageSequence)
+	WRITE_DATA_MSG(header, alignedLength, this->messageSequence)
 
 	//store the message contents
 	void* bufferOffset = (void*)(this->buffer + localTailPosition + RECORD_HEADER_LENGTH);
@@ -129,7 +138,7 @@ void SpscQueue::read(MessageHandler* handler)
 	unsigned int currentBatchIteration = 0;
 	while (localHead < this->cacheTail && currentBatchIteration < this->batchSize)
 	{
-		unsigned long localHeadPosition = localHead % this->capacity;
+		unsigned long localHeadPosition = GET_POSITION(localHead, this->capacity);
 		RecordHeader* header = (RecordHeader*)(this->buffer + localHeadPosition);
 		unsigned long msgLength = header->length;
 		if (header->type == MSG_PADDING_TYPE)
@@ -148,7 +157,7 @@ void SpscQueue::read(MessageHandler* handler)
 			std::memset((void*)&this->buffer[localHeadPosition], 0, msgLength + recordHeaderLength);
 		#endif
 		localHead = localHead + msgLength + RECORD_HEADER_LENGTH;
-		localHeadPosition = localHead % this->capacity;
+		localHeadPosition = GET_POSITION(localHead, this->capacity);
 
 		//wrap to the start if the remaining capacity is less than a record header even to fit in
 		unsigned long remainingCapacity = this->capacity - localHeadPosition;

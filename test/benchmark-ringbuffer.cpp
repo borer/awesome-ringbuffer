@@ -96,17 +96,13 @@ void publisherTask(SpscQueue* queue)
 		bool isTrying = false;
 		while (status != WriteStatus::SUCCESSFUL)
 		{
-			if (!isTrying && numberTries == 2)
-			{
-				std::cout << "Is trying to write message : " << numMessage
-					<< ", head: " << queue->getHead()
-					<< ", headPosition: " << queue->getHeadPosition()
-					<< ", tail: " << queue->getTail()
-					<< ", tailPosition: " << queue->getTailPosition()
-					<< ", error code " << status
-					<< std::endl;
-				isTrying = true;
-			}
+			std::cout << "Is trying to write message : " << numMessage
+				<< ", head: " << queue->getHead()
+				<< ", headPosition: " << queue->getHeadPosition()
+				<< ", tail: " << queue->getTail()
+				<< ", tailPosition: " << queue->getTailPosition()
+				<< ", error code " << status
+				<< std::endl;
 
 			std::this_thread::sleep_for(std::chrono::nanoseconds(10));
 			status = queue->write(msg, 0, msgSize);
@@ -139,7 +135,7 @@ void publisherTask(SpscQueue* queue)
 
 int main(int argc, char **argv)
 {
-	unsigned long capacity = 1024000; //1 MiB in bytes
+	unsigned long capacity = 1048576; //~1 MiB in bytes (2^20)
 
 	std::cout << "Init" << std::endl;
 	SpscQueue myRingBuffer(capacity, 100);
