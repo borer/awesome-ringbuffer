@@ -54,7 +54,7 @@ void consumerTask(SpscQueue* queue)
 	auto start = std::chrono::system_clock::now();
 	while (true)
 	{
-		queue->read((MessageHandler*)handler);
+		unsigned long readBytes = queue->read((MessageHandler*)handler);
 
 		if (handler->isInvalidState())
 		{
@@ -77,6 +77,11 @@ void consumerTask(SpscQueue* queue)
 				<< "elapsed time: " << elapsed_seconds.count() << "s\n" << std::endl;
 
 			exit(0);
+		}
+
+		if (readBytes)
+		{
+			std::this_thread::yield();
 		}
 	}
 }
@@ -104,7 +109,8 @@ void publisherTask(SpscQueue* queue)
 				<< ", error code " << status
 				<< std::endl;
 
-			std::this_thread::sleep_for(std::chrono::nanoseconds(10));
+			//std::this_thread::sleep_for(std::chrono::nanoseconds(10));
+			std::this_thread::yield();
 			status = queue->write(msg, 0, msgSize);
 			numberTries++;
 		}

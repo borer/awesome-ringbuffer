@@ -46,7 +46,7 @@ class SpscQueue
 public:
 	SpscQueue(unsigned long capacity, unsigned int batchSize = 10);
 	WriteStatus write(const void* msg, unsigned long offset, unsigned long lenght);
-	void read(MessageHandler* handler);
+	unsigned long read(MessageHandler* handler);
 	int getCapacity();
 	~SpscQueue();
 	

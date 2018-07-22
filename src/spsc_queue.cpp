@@ -120,21 +120,22 @@ WriteStatus SpscQueue::write(const void* msg, unsigned long offset, unsigned lon
 	return WriteStatus::SUCCESSFUL;
 }
 
-void SpscQueue::read(MessageHandler* handler)
+unsigned long SpscQueue::read(MessageHandler* handler)
 {
-	if (this->privateCacheHead == this->cacheTail)
+	unsigned long localPrivateCacheHead = this->privateCacheHead;
+	if (localPrivateCacheHead == this->cacheTail)
 	{
 		this->cacheTail = this->tail.load(std::memory_order_acquire);
-		if (this->privateCacheHead == this->cacheTail)
+		if (localPrivateCacheHead == this->cacheTail)
 		{
-			return;
+			return 0;
 		}
 	}
 
 	unsigned int currentBatchIteration = 0;
-	while (this->privateCacheHead < this->cacheTail && currentBatchIteration < this->batchSize)
+	while (localPrivateCacheHead < this->cacheTail && currentBatchIteration < this->batchSize)
 	{
-		unsigned long localHeadPosition = GET_POSITION(this->privateCacheHead, this->capacity);
+		unsigned long localHeadPosition = GET_POSITION(localPrivateCacheHead, this->capacity);
 		//check if the remaining capacity is less than a record header even to fit in
 		unsigned long remainingCapacity = this->capacity - localHeadPosition;
 		if (remainingCapacity < RECORD_HEADER_LENGTH)
@@ -142,8 +143,8 @@ void SpscQueue::read(MessageHandler* handler)
 			#ifdef ZERO_OUT_READ_MEMORY
 				std::memset((void*)&this->buffer[localHeadPosition], 0, remainingCapacity);
 			#endif
-			this->privateCacheHead = this->privateCacheHead + remainingCapacity;
-			localHeadPosition = GET_POSITION(this->privateCacheHead, this->capacity);
+			localPrivateCacheHead = localPrivateCacheHead + remainingCapacity;
+			localHeadPosition = GET_POSITION(localPrivateCacheHead, this->capacity);
 		}
 
 		RecordHeader* header = (RecordHeader*)(this->buffer + localHeadPosition);
@@ -153,8 +154,8 @@ void SpscQueue::read(MessageHandler* handler)
 			#ifdef ZERO_OUT_READ_MEMORY
 				std::memset((void*)&this->buffer[localHeadPosition], 0, RECORD_HEADER_LENGTH + msgLength);
 			#endif
-			this->privateCacheHead = this->privateCacheHead + RECORD_HEADER_LENGTH + msgLength;
-			localHeadPosition = GET_POSITION(this->privateCacheHead, this->capacity);
+			localPrivateCacheHead = localPrivateCacheHead + RECORD_HEADER_LENGTH + msgLength;
+			localHeadPosition = GET_POSITION(localPrivateCacheHead, this->capacity);
 			header = (RecordHeader*)(this->buffer + localHeadPosition);
 			msgLength = header->length;
 		}
@@ -165,12 +166,15 @@ void SpscQueue::read(MessageHandler* handler)
 		#ifdef ZERO_OUT_READ_MEMORY
 				std::memset((void*)&this->buffer[localHeadPosition], 0, RECORD_HEADER_LENGTH + msgLength);
 		#endif
-		this->privateCacheHead = this->privateCacheHead + RECORD_HEADER_LENGTH + msgLength;
+		localPrivateCacheHead = localPrivateCacheHead + RECORD_HEADER_LENGTH + msgLength;
 
 		currentBatchIteration++;
 	}
 
+	unsigned long readBytes = localPrivateCacheHead - this->privateCacheHead;
+	this->privateCacheHead = localPrivateCacheHead;
 	this->head.store(this->privateCacheHead, std::memory_order_release);
+	return readBytes;
 }
 
 SpscQueue::~SpscQueue()
