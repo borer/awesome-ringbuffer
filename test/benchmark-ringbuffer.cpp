@@ -9,7 +9,6 @@
 typedef struct Message
 {
 	long sequence;
-	const char* name;
 };
 
 class TestMessageHandler : public MessageHandler
@@ -75,6 +74,7 @@ void consumerTask(SpscQueue* queue)
 
 void publisherTask(SpscQueue* queue)
 {
+	long numIterations = 0;
 	long numMessage = 0;
 	size_t msgSize = sizeof(Message);
 	Message* msg = new Message();
@@ -82,7 +82,7 @@ void publisherTask(SpscQueue* queue)
 	while (true)
 	{
 		numMessage++;
-		msg->name = "fixed name";
+//		msg->name = "fixed name";
 		msg->sequence = numMessage;
 		WriteStatus status = queue->write(msg, 0, msgSize);
 		int numberTries = 0;
@@ -108,10 +108,20 @@ void publisherTask(SpscQueue* queue)
 			std::chrono::duration<double> elapsed_seconds = end - start;
 			std::time_t end_time = std::chrono::system_clock::to_time_t(end);
 
+			start = end;
+			double elapsedTime = elapsed_seconds.count();
+			char numPerSecond[10];
+			sprintf(numPerSecond, "%F", (double)numMessage / elapsedTime);
 			std::cout << "finished computation at " << std::ctime(&end_time)
-				<< "elapsed time: " << elapsed_seconds.count() << "s\n" << std::endl;
+				<< "elapsed time: " << elapsedTime << "s\n"
+				<< "msg/s : " << numPerSecond << std::endl;
 
-			exit(0);
+			numIterations++;
+			numMessage = 0;
+			if (numIterations >= 10)
+			{
+				exit(0);
+			}
 		}
 
 		if (status != WriteStatus::SUCCESSFUL)
@@ -149,8 +159,8 @@ int main(int argc, char **argv)
 	std::thread publisherThread(publisherTask, &myRingBuffer);
 	std::thread consumerThread(consumerTask, &myRingBuffer);
 
-	consumerThread.join();
 	publisherThread.join();
+	consumerThread.join();
 
 	std::cout << "Ending" << std::endl;
 	return 0;

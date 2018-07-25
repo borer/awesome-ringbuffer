@@ -131,7 +131,7 @@ unsigned long SpscQueue::read(MessageHandler* handler)
 		}
 	}
 
-	while (localPrivateCacheHead < this->cacheTail)
+	while (localPrivateCacheHead != this->cacheTail)
 	{
 		unsigned long localHeadPosition = GET_POSITION(localPrivateCacheHead, this->capacity);
 		//check if the remaining capacity is less than a record header even to fit in
