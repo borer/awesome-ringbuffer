@@ -24,7 +24,6 @@ class SpscQueue
 	uint8_t begin_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH)];
 	uint8_t* buffer;
 	unsigned long capacity;
-	unsigned int batchSize;
 	uint8_t end_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH)];
 
 	std::atomic<unsigned long> head;
@@ -44,7 +43,7 @@ class SpscQueue
 	uint8_t messageSequence_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(unsigned long)];
 
 public:
-	SpscQueue(unsigned long capacity, unsigned int batchSize = 10);
+	SpscQueue(unsigned long capacity);
 	WriteStatus write(const void* msg, unsigned long offset, unsigned long lenght);
 	unsigned long read(MessageHandler* handler);
 	int getCapacity();

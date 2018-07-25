@@ -6,7 +6,7 @@
  
 #define MSG_DATA_TYPE 0x01
 #define MSG_PADDING_TYPE 0x02
-#define MSG_HEADER_ENDING 0xbb
+#define MSG_HEADER_ENDING 0x66
 
 #define WRITE_DATA_MSG(header, lengthMsg, sequenceMsg) \
 	header->length = lengthMsg; \
@@ -39,12 +39,14 @@ typedef struct
 
 } RecordHeader;
 
-SpscQueue::SpscQueue(unsigned long capacity, unsigned int batchSize)
+SpscQueue::SpscQueue(unsigned long capacity)
 {
    assert(IS_POWER_OF_TWO(capacity));
 
    this->capacity = capacity;
    this->buffer = new uint8_t[this->capacity];
+   this->messageSequence = 0;
+
    this->head = 0;
    this->cacheHead = 0;
    this->privateCacheHead = 0;
@@ -52,9 +54,6 @@ SpscQueue::SpscQueue(unsigned long capacity, unsigned int batchSize)
    this->tail = 0;
    this->cacheTail = 0;
    this->privateCacheTail = 0;
-
-   this->messageSequence = 0;
-   this->batchSize = batchSize;
 }
 
 int SpscQueue::getCapacity()
@@ -94,7 +93,7 @@ WriteStatus SpscQueue::write(const void* msg, unsigned long offset, unsigned lon
 			RecordHeader* header = (RecordHeader*)(this->buffer + localTailPosition);
 			long paddingSize = this->capacity - localTailPosition - RECORD_HEADER_LENGTH;
 			WRITE_PADDING_MSG(header, paddingSize)
-				this->privateCacheTail = this->privateCacheTail + paddingSize + RECORD_HEADER_LENGTH;
+			this->privateCacheTail = this->privateCacheTail + paddingSize + RECORD_HEADER_LENGTH;
 		}
 		else
 		{
@@ -132,8 +131,7 @@ unsigned long SpscQueue::read(MessageHandler* handler)
 		}
 	}
 
-	unsigned int currentBatchIteration = 0;
-	while (localPrivateCacheHead < this->cacheTail && currentBatchIteration < this->batchSize)
+	while (localPrivateCacheHead < this->cacheTail)
 	{
 		unsigned long localHeadPosition = GET_POSITION(localPrivateCacheHead, this->capacity);
 		//check if the remaining capacity is less than a record header even to fit in
@@ -167,8 +165,6 @@ unsigned long SpscQueue::read(MessageHandler* handler)
 				std::memset((void*)&this->buffer[localHeadPosition], 0, RECORD_HEADER_LENGTH + msgLength);
 		#endif
 		localPrivateCacheHead = localPrivateCacheHead + RECORD_HEADER_LENGTH + msgLength;
-
-		currentBatchIteration++;
 	}
 
 	unsigned long readBytes = localPrivateCacheHead - this->privateCacheHead;

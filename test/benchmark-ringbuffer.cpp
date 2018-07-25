@@ -51,7 +51,6 @@ public:
 void consumerTask(SpscQueue* queue)
 {
 	TestMessageHandler* handler = new TestMessageHandler();
-	auto start = std::chrono::system_clock::now();
 	while (true)
 	{
 		unsigned long readBytes = queue->read((MessageHandler*)handler);
@@ -67,7 +66,43 @@ void consumerTask(SpscQueue* queue)
 			break;
 		}
 
-		if (handler->getMsgSequence() > 100000000)
+		/*if (readBytes == 0)
+		{
+			std::this_thread::sleep_for(std::chrono::nanoseconds(2));
+		}*/
+	}
+}
+
+void publisherTask(SpscQueue* queue)
+{
+	long numMessage = 0;
+	size_t msgSize = sizeof(Message);
+	Message* msg = new Message();
+	auto start = std::chrono::system_clock::now();
+	while (true)
+	{
+		numMessage++;
+		msg->name = "fixed name";
+		msg->sequence = numMessage;
+		WriteStatus status = queue->write(msg, 0, msgSize);
+		int numberTries = 0;
+		bool isTrying = false;
+		while (status != WriteStatus::SUCCESSFUL && numberTries < 1000)
+		{
+			/*std::cout << "Is trying to write message : " << numMessage
+				<< ", head: " << queue->getHead()
+				<< ", headPosition: " << queue->getHeadPosition()
+				<< ", tail: " << queue->getTail()
+				<< ", tailPosition: " << queue->getTailPosition()
+				<< ", error code " << status
+				<< std::endl;*/
+
+			std::this_thread::sleep_for(std::chrono::nanoseconds(10));
+			status = queue->write(msg, 0, msgSize);
+			numberTries++;
+		}
+
+		if (numMessage > 100000000 && status == WriteStatus::SUCCESSFUL)
 		{
 			auto end = std::chrono::system_clock::now();
 			std::chrono::duration<double> elapsed_seconds = end - start;
@@ -77,42 +112,6 @@ void consumerTask(SpscQueue* queue)
 				<< "elapsed time: " << elapsed_seconds.count() << "s\n" << std::endl;
 
 			exit(0);
-		}
-
-		if (readBytes)
-		{
-			std::this_thread::yield();
-		}
-	}
-}
-
-void publisherTask(SpscQueue* queue)
-{
-	long numMessage = 0;
-	size_t msgSize = sizeof(Message);
-	Message* msg = new Message();
-	while (true)
-	{
-		numMessage++;
-		msg->name = "fixed name";
-		msg->sequence = numMessage;
-		WriteStatus status = queue->write(msg, 0, msgSize);
-		int numberTries = 0;
-		bool isTrying = false;
-		while (status != WriteStatus::SUCCESSFUL)
-		{
-			std::cout << "Is trying to write message : " << numMessage
-				<< ", head: " << queue->getHead()
-				<< ", headPosition: " << queue->getHeadPosition()
-				<< ", tail: " << queue->getTail()
-				<< ", tailPosition: " << queue->getTailPosition()
-				<< ", error code " << status
-				<< std::endl;
-
-			//std::this_thread::sleep_for(std::chrono::nanoseconds(10));
-			std::this_thread::yield();
-			status = queue->write(msg, 0, msgSize);
-			numberTries++;
 		}
 
 		if (status != WriteStatus::SUCCESSFUL)
@@ -144,7 +143,7 @@ int main(int argc, char **argv)
 	unsigned long capacity = 1048576; //~1 MiB in bytes (2^20)
 
 	std::cout << "Init" << std::endl;
-	SpscQueue myRingBuffer(capacity, 100);
+	SpscQueue myRingBuffer(capacity);
 	std::cout << "Created RingBuffer with size : " << myRingBuffer.getCapacity() << std::endl;
 
 	std::thread publisherThread(publisherTask, &myRingBuffer);
