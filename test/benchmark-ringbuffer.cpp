@@ -8,16 +8,16 @@
 
 typedef struct Message
 {
-	long sequence;
+	long long sequence;
 };
 
 class TestMessageHandler : public MessageHandler
 {
-	unsigned long msgSequence = 0;
+	unsigned long long msgSequence = 0;
 	bool invalidState = false;
 
 public:
-	void onMessage(const uint8_t* buffer, unsigned long length, unsigned long sequence)
+	void onMessage(const uint8_t* buffer, size_t length, unsigned long long sequence)
 	{
 		Message* message = (Message*)buffer;
 		if (msgSequence + 1 == sequence)
@@ -31,7 +31,7 @@ public:
 		}
 	};
 
-	unsigned long getMsgSequence()
+	unsigned long long getMsgSequence()
 	{
 		return msgSequence;
 	}
@@ -43,7 +43,6 @@ public:
 
 	virtual ~TestMessageHandler()
 	{
-
 	};
 };
 
@@ -52,7 +51,7 @@ void consumerTask(SpscQueue* queue)
 	TestMessageHandler* handler = new TestMessageHandler();
 	while (true)
 	{
-		unsigned long readBytes = queue->read((MessageHandler*)handler);
+		size_t readBytes = queue->read((MessageHandler*)handler);
 
 		if (handler->isInvalidState())
 		{
@@ -72,17 +71,29 @@ void consumerTask(SpscQueue* queue)
 	}
 }
 
+typedef struct
+{
+	size_t length;
+	unsigned long long sequence;
+	char type;
+	char padding1, padding2;
+	char end;
+
+} RecordHeader;
+
+#define ALIGNMENT (2 * sizeof(int32_t))
+#define ALIGN(value, alignment) (((value) + ((alignment) - 1)) & ~((alignment) - 1))
+
 void publisherTask(SpscQueue* queue)
 {
 	long numIterations = 0;
-	long numMessage = 0;
+	long long numMessage = 0;
 	size_t msgSize = sizeof(Message);
 	Message* msg = new Message();
 	auto start = std::chrono::system_clock::now();
 	while (true)
 	{
 		numMessage++;
-//		msg->name = "fixed name";
 		msg->sequence = numMessage;
 		WriteStatus status = queue->write(msg, 0, msgSize);
 		int numberTries = 0;
@@ -110,11 +121,15 @@ void publisherTask(SpscQueue* queue)
 
 			start = end;
 			double elapsedTime = elapsed_seconds.count();
+			double messagesPerSecond = (double)numMessage / elapsedTime;
 			char numPerSecond[10];
-			sprintf(numPerSecond, "%F", (double)numMessage / elapsedTime);
-			std::cout << "finished computation at " << std::ctime(&end_time)
-				<< "elapsed time: " << elapsedTime << "s\n"
-				<< "msg/s : " << numPerSecond << std::endl;
+			sprintf(numPerSecond, "%F", messagesPerSecond);
+			int messageBytes = ALIGN(msgSize, ALIGNMENT) + sizeof(RecordHeader);
+			std::cout << "finished computation at " << std::ctime(&end_time)  
+				<< " elapsed time: " << elapsedTime << "s (100 millions)\n"
+				<< " msg/s : " << numPerSecond << "\n"
+				<< " MiB/s : " << (double)(messagesPerSecond * messageBytes) / 1000000
+				<< std::endl;
 
 			numIterations++;
 			numMessage = 0;
@@ -150,7 +165,7 @@ void publisherTask(SpscQueue* queue)
 
 int main(int argc, char **argv)
 {
-	unsigned long capacity = 1048576; //~1 MiB in bytes (2^20)
+	size_t capacity = 1048576; //~1 MiB in bytes (2^20)
 
 	std::cout << "Init" << std::endl;
 	SpscQueue myRingBuffer(capacity);

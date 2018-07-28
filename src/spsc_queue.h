@@ -7,7 +7,7 @@
 class MessageHandler
 {
 public:
-	virtual void onMessage(const uint8_t* buffer, unsigned long lenght, unsigned long messageSequence) = 0;
+	virtual void onMessage(const uint8_t* buffer, size_t lenght, unsigned long long messageSequence) = 0;
 	virtual ~MessageHandler() {}
 };
 
@@ -23,48 +23,48 @@ class SpscQueue
 {
 	uint8_t begin_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH)];
 	uint8_t* buffer;
-	unsigned long capacity;
+	size_t capacity;
 	uint8_t end_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH)];
 
-	std::atomic<unsigned long> head;
-	uint8_t head_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(std::atomic<unsigned long>)];
-	unsigned long cacheHead; //used locally by writes
-	uint8_t cacheHead_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(unsigned long)];
-	unsigned long privateCacheHead; //used locally by read
-	uint8_t privateCacheHead_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(unsigned long)];
+	std::atomic<size_t> head;
+	uint8_t head_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(std::atomic<size_t>)];
+	size_t cacheHead; //used locally by writes
+	uint8_t cacheHead_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(size_t)];
+	size_t privateCacheHead; //used locally by read
+	uint8_t privateCacheHead_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(size_t)];
 
-	std::atomic<unsigned long> tail;
-	uint8_t tail_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(std::atomic<unsigned long>)];
-	unsigned long cacheTail; //used locally by read
-	uint8_t cacheTail_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(unsigned long)];
-	unsigned long privateCacheTail; //used locally by write
-	uint8_t privateCacheTail_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(unsigned long)];
-	unsigned long messageSequence;
-	uint8_t messageSequence_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(unsigned long)];
+	std::atomic<size_t> tail;
+	uint8_t tail_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(std::atomic<size_t>)];
+	size_t cacheTail; //used locally by read
+	uint8_t cacheTail_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(size_t)];
+	size_t privateCacheTail; //used locally by write
+	uint8_t privateCacheTail_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(size_t)];
+	size_t messageSequence;
+	uint8_t messageSequence_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(size_t)];
 
 public:
-	SpscQueue(unsigned long capacity);
-	WriteStatus write(const void* msg, unsigned long offset, unsigned long lenght);
-	unsigned long read(MessageHandler* handler);
-	int getCapacity();
+	SpscQueue(size_t capacity);
+	WriteStatus write(const void* msg, size_t offset, size_t lenght);
+	size_t read(MessageHandler* handler);
+	size_t getCapacity();
 	~SpscQueue();
 	
-	unsigned long getTail()
+	size_t getTail()
 	{
 		return tail;
 	}
 
-	unsigned long getTailPosition()
+	size_t getTailPosition()
 	{
 		return tail & (capacity - 1);
 	}
 
-	unsigned long getHead()
+	size_t getHead()
 	{
 		return head;
 	}
 
-	unsigned long getHeadPosition()
+	size_t getHeadPosition()
 	{
 		return head & (capacity - 1);
 	}

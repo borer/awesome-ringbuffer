@@ -10,13 +10,13 @@
 
 class TestMessageHandler : public MessageHandler
 {
-	long numMsgRead = 0;
+	long long numMsgRead = 0;
 	std::string* lastMsg;
-	unsigned long lastMsgLength;
-	unsigned long lastSequence = 0;
+	size_t lastMsgLength;
+	unsigned long long lastSequence = 0;
 
 public:
-	void onMessage(const uint8_t* buffer, unsigned long length, unsigned long sequence)
+	void onMessage(const uint8_t* buffer, size_t length, unsigned long long sequence)
 	{
 		lastMsgLength = length;
 		lastMsg = new std::string((const char*)buffer, length);
@@ -35,12 +35,12 @@ public:
 		return lastMsg;
 	}
 
-	unsigned long getLastMsgSize()
+	size_t getLastMsgSize()
 	{
 		return lastMsgLength;
 	}
 
-	long getNumMsgRead()
+	long long getNumMsgRead()
 	{
 		return numMsgRead;
 	}

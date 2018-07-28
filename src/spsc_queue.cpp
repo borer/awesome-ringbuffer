@@ -31,15 +31,15 @@
 
 typedef struct
 {
-	unsigned long length;
-	unsigned long sequence;
+	size_t length;
+	unsigned long long sequence;
 	char type;
 	char padding1, padding2;
 	char end;
 
 } RecordHeader;
 
-SpscQueue::SpscQueue(unsigned long capacity)
+SpscQueue::SpscQueue(size_t capacity)
 {
    assert(IS_POWER_OF_TWO(capacity));
 
@@ -56,12 +56,12 @@ SpscQueue::SpscQueue(unsigned long capacity)
    this->privateCacheTail = 0;
 }
 
-int SpscQueue::getCapacity()
+size_t SpscQueue::getCapacity()
 {
 	return this->capacity;
 }
 
-WriteStatus SpscQueue::write(const void* msg, unsigned long offset, unsigned long lenght)
+WriteStatus SpscQueue::write(const void* msg, size_t offset, size_t lenght)
 {
 	size_t alignedLength = ALIGN(lenght, ALIGNMENT);
 	size_t recordLength = alignedLength + RECORD_HEADER_LENGTH;
@@ -71,7 +71,7 @@ WriteStatus SpscQueue::write(const void* msg, unsigned long offset, unsigned lon
 		return WriteStatus::MSG_TOO_BIG;
 	}
 
-	unsigned long localTailPosition = GET_POSITION(this->privateCacheTail, this->capacity);
+	size_t localTailPosition = GET_POSITION(this->privateCacheTail, this->capacity);
 	bool isOverridingNonReadData = (this->privateCacheTail + recordLength) - this->cacheHead >= this->capacity;
 	if (isOverridingNonReadData)
 	{
@@ -87,11 +87,11 @@ WriteStatus SpscQueue::write(const void* msg, unsigned long offset, unsigned lon
 	if (isNeedForWrap)
 	{
 		//don't write padding header if there is not enought space and just wrap
-		unsigned long remainingCapacity = this->capacity - localTailPosition;
+		size_t remainingCapacity = this->capacity - localTailPosition;
 		if (remainingCapacity > RECORD_HEADER_LENGTH)
 		{
 			RecordHeader* header = (RecordHeader*)(this->buffer + localTailPosition);
-			long paddingSize = this->capacity - localTailPosition - RECORD_HEADER_LENGTH;
+			size_t paddingSize = this->capacity - localTailPosition - RECORD_HEADER_LENGTH;
 			WRITE_PADDING_MSG(header, paddingSize)
 			this->privateCacheTail = this->privateCacheTail + paddingSize + RECORD_HEADER_LENGTH;
 		}
@@ -119,9 +119,9 @@ WriteStatus SpscQueue::write(const void* msg, unsigned long offset, unsigned lon
 	return WriteStatus::SUCCESSFUL;
 }
 
-unsigned long SpscQueue::read(MessageHandler* handler)
+size_t SpscQueue::read(MessageHandler* handler)
 {
-	unsigned long localPrivateCacheHead = this->privateCacheHead;
+	size_t localPrivateCacheHead = this->privateCacheHead;
 	if (localPrivateCacheHead == this->cacheTail)
 	{
 		this->cacheTail = this->tail.load(std::memory_order_acquire);
@@ -133,9 +133,9 @@ unsigned long SpscQueue::read(MessageHandler* handler)
 
 	while (localPrivateCacheHead != this->cacheTail)
 	{
-		unsigned long localHeadPosition = GET_POSITION(localPrivateCacheHead, this->capacity);
+		size_t localHeadPosition = GET_POSITION(localPrivateCacheHead, this->capacity);
 		//check if the remaining capacity is less than a record header even to fit in
-		unsigned long remainingCapacity = this->capacity - localHeadPosition;
+		size_t remainingCapacity = this->capacity - localHeadPosition;
 		if (remainingCapacity < RECORD_HEADER_LENGTH)
 		{
 			#ifdef ZERO_OUT_READ_MEMORY
@@ -146,7 +146,7 @@ unsigned long SpscQueue::read(MessageHandler* handler)
 		}
 
 		RecordHeader* header = (RecordHeader*)(this->buffer + localHeadPosition);
-		unsigned long msgLength = header->length;
+		size_t msgLength = header->length;
 		if (header->type == MSG_PADDING_TYPE)
 		{
 			#ifdef ZERO_OUT_READ_MEMORY
@@ -167,7 +167,7 @@ unsigned long SpscQueue::read(MessageHandler* handler)
 		localPrivateCacheHead = localPrivateCacheHead + RECORD_HEADER_LENGTH + msgLength;
 	}
 
-	unsigned long readBytes = localPrivateCacheHead - this->privateCacheHead;
+	size_t readBytes = localPrivateCacheHead - this->privateCacheHead;
 	this->privateCacheHead = localPrivateCacheHead;
 	this->head.store(this->privateCacheHead, std::memory_order_release);
 	return readBytes;
