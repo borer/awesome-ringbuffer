@@ -3,6 +3,9 @@ list(APPEND CUSTOM_INCLUDE_DIRECTORIES
   "../src/"
 )
 
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package (Threads REQUIRED)
+
 file(GLOB TEST_SOURCES *.cpp)
 
 enable_testing()
@@ -37,6 +40,7 @@ foreach(filename ${TEST_SOURCES})
 	target_link_libraries(${testname} 
 		LINK_PUBLIC 
 		${ringbufferLibaryName}
+		Threads::Threads
 	)
 	
 	add_test(${testname} ${testname})

@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.6)
+cmake_minimum_required (VERSION 3.5)
 
 set(META_PROJECT_NAME        "ringbuffer")
 set(META_PROJECT_DESCRIPTION "Fast ring buffer for IO async processing")
