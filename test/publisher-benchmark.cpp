@@ -26,26 +26,18 @@ typedef struct
 
 void publisherTask(SpscQueue* queue)
 {
-	long long numMessage = 0;
-	size_t message_size = sizeof(Message) + sizeof(RecordHeader);
+	size_t message_size = ALIGN(sizeof(Message), ALIGNMENT) + sizeof(RecordHeader);
 	size_t maxMessages = (queue->getCapacity() / message_size) - 1;
 	size_t msgSize = sizeof(Message);
 	Message* msg = new Message();
+	size_t numMessage = 0;
+
 	auto start = std::chrono::system_clock::now();
-	while (true)
+	while(true)
 	{
 		numMessage++;
 		msg->sequence = numMessage;
 		WriteStatus status = queue->write(msg, 0, msgSize);
-		int numberTries = 0;
-		bool isTrying = false;
-		while (status != WriteStatus::SUCCESSFUL && numberTries < 1000)
-		{
-			std::cout << "Error writing message. Should never happen" << std::endl;
-			std::this_thread::sleep_for(std::chrono::nanoseconds(10));
-			status = queue->write(msg, 0, msgSize);
-			numberTries++;
-		}
 
 		if (numMessage == maxMessages)
 		{
@@ -56,7 +48,7 @@ void publisherTask(SpscQueue* queue)
 			start = end;
 			double elapsedTime = elapsed_seconds.count();
 			double messagesPerSecond = (double)numMessage / elapsedTime;
-			char numPerSecond[10];
+			char numPerSecond[50];
 			sprintf(numPerSecond, "%F", messagesPerSecond);
 			int messageBytes = ALIGN(msgSize, ALIGNMENT) + sizeof(RecordHeader);
 			std::cout << "finished computation at " << std::ctime(&end_time)  
@@ -70,6 +62,8 @@ void publisherTask(SpscQueue* queue)
 
 		if (status != WriteStatus::SUCCESSFUL)
 		{
+			std::cout << "Error writing message. Should never happen" << std::endl;
+
 			std::cout << "Error writing msg : " << numMessage << ", head: " << queue->getHead() << ", tail : " << queue->getTail() << ", status: ";
 			if(status == WriteStatus::MSG_TOO_BIG)
 			{
@@ -95,17 +89,15 @@ void publisherTask(SpscQueue* queue)
 int main(int argc, char **argv)
 {
 	size_t capacity = 1 << 30; //~1 GiB in bytes
-	std::cout << capacity << std::endl;
-
 	size_t message_size = ALIGN(sizeof(Message), ALIGNMENT) + sizeof(RecordHeader);
-
-	std::cout << "Init. msg size: " << message_size << std::endl;
+	std::cout << "Init" 
+		<< " buffer capacity: " << capacity
+		<< " msg size: " << message_size << std::endl;
 
 	for (size_t i = 0; i < 10; i++)
 	{
 		SpscQueue myRingBuffer(capacity);
-		std::thread publisherThread(publisherTask, &myRingBuffer);
-		publisherThread.join();
+		publisherTask(&myRingBuffer);
 	}
 
 	std::cout << "Ending" << std::endl;
