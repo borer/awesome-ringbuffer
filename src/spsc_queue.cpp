@@ -1,6 +1,7 @@
 #include <cstring>
 #include <cassert>
 #include "spsc_queue.h"
+#include "queue_atomic_64.h"
 
 //#define ZERO_OUT_READ_MEMORY
  
@@ -11,16 +12,12 @@
 #define WRITE_DATA_MSG(header, lengthMsg, sequenceMsg) \
 	header->length = lengthMsg; \
 	header->sequence = sequenceMsg; \
-	header->type = MSG_DATA_TYPE; \
-	header->padding1 = header->padding2 = 0x00; \
-	header->end = MSG_HEADER_ENDING;
+	header->type = MSG_DATA_TYPE;
 
 #define WRITE_PADDING_MSG(header, lengthMsg) \
 	header->length = lengthMsg; \
 	header->sequence = 0; \
-	header->type = MSG_PADDING_TYPE; \
-	header->padding1 = header->padding2 = 0x00; \
-	header->end = MSG_HEADER_ENDING;
+	header->type = MSG_PADDING_TYPE;
 
 #define RECORD_HEADER_LENGTH sizeof(RecordHeader)
 
@@ -33,17 +30,14 @@ typedef struct
 {
 	size_t length;
 	unsigned long long sequence;
-	char type;
-	char padding1, padding2;
-	char end;
+	int type;
 
 } RecordHeader;
 
-SpscQueue::SpscQueue(size_t capacity)
+SpscQueue::SpscQueue(size_t capacity) : capacity(capacity)
 {
    assert(IS_POWER_OF_TWO(capacity));
 
-   this->capacity = capacity;
    this->buffer = new uint8_t[this->capacity];
    this->messageSequence = 0;
 
@@ -71,14 +65,17 @@ WriteStatus SpscQueue::write(const void* msg, size_t offset, size_t lenght)
 		return WriteStatus::MSG_TOO_BIG;
 	}
 
+	this->messageSequence++;
+
 	size_t localTailPosition = GET_POSITION(this->privateCacheTail, this->capacity);
 	bool isOverridingNonReadData = (this->privateCacheTail + recordLength) - this->cacheHead >= this->capacity;
 	if (isOverridingNonReadData)
 	{
-		this->cacheHead = this->head.load(std::memory_order_acquire);
+		RING_BUFFER_GET_VOLATILE(this->cacheHead, this->head);
 		bool isStillOverridingNonReadData = (this->privateCacheTail + recordLength) - this->cacheHead >= this->capacity;
 		if (isStillOverridingNonReadData)
 		{
+			this->messageSequence--;
 			return WriteStatus::QUEUE_FULL;
 		}
 	}
@@ -104,9 +101,7 @@ WriteStatus SpscQueue::write(const void* msg, size_t offset, size_t lenght)
 	}
 
 	//store the message header
-	//TODO what about message size alingment ?
 	RecordHeader* header = (RecordHeader*)(this->buffer + localTailPosition);
-	this->messageSequence++;
 	WRITE_DATA_MSG(header, alignedLength, this->messageSequence)
 
 	//store the message contents
@@ -114,7 +109,7 @@ WriteStatus SpscQueue::write(const void* msg, size_t offset, size_t lenght)
 	std::memcpy(bufferOffset, (const void*)((uint8_t*)msg + offset), lenght);
 
 	this->privateCacheTail = this->privateCacheTail + recordLength;
-	this->tail.store(this->privateCacheTail, std::memory_order_release);
+	RING_BUFFER_PUT_ORDERED(this->tail, this->privateCacheTail);
 
 	return WriteStatus::SUCCESSFUL;
 }
@@ -124,7 +119,7 @@ size_t SpscQueue::read(MessageHandler* handler)
 	size_t localPrivateCacheHead = this->privateCacheHead;
 	if (localPrivateCacheHead == this->cacheTail)
 	{
-		this->cacheTail = this->tail.load(std::memory_order_acquire);
+		RING_BUFFER_GET_VOLATILE(this->cacheTail, this->tail);
 		if (localPrivateCacheHead == this->cacheTail)
 		{
 			return 0;
@@ -169,7 +164,7 @@ size_t SpscQueue::read(MessageHandler* handler)
 
 	size_t readBytes = localPrivateCacheHead - this->privateCacheHead;
 	this->privateCacheHead = localPrivateCacheHead;
-	this->head.store(this->privateCacheHead, std::memory_order_release);
+	RING_BUFFER_PUT_ORDERED(this->head, this->privateCacheHead);
 	return readBytes;
 }
 

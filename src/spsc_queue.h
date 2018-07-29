@@ -3,7 +3,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <atomic>
 
 #define RING_BUFFER_CACHE_LINE_LENGTH (64)
 
@@ -26,18 +25,18 @@ class SpscQueue
 {
 	uint8_t begin_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH)];
 	uint8_t* buffer;
-	size_t capacity;
+	const size_t capacity;
 	uint8_t end_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH)];
 
-	std::atomic<size_t> head;
-	uint8_t head_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(std::atomic<size_t>)];
+	size_t head;
+	uint8_t head_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(size_t)];
 	size_t cacheHead; //used locally by writes
 	uint8_t cacheHead_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(size_t)];
 	size_t privateCacheHead; //used locally by read
 	uint8_t privateCacheHead_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(size_t)];
 
-	std::atomic<size_t> tail;
-	uint8_t tail_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(std::atomic<size_t>)];
+	size_t tail;
+	uint8_t tail_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(size_t)];
 	size_t cacheTail; //used locally by read
 	uint8_t cacheTail_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(size_t)];
 	size_t privateCacheTail; //used locally by write
