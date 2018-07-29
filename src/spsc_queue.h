@@ -1,3 +1,6 @@
+#ifndef SPSC_QUEUE_H
+#define SPSC_QUEUE_H
+
 #include <cstddef>
 #include <cstdint>
 #include <atomic>
@@ -69,3 +72,5 @@ public:
 		return head & (capacity - 1);
 	}
 };
+
+#endif // SPSC_QUEUE_H
