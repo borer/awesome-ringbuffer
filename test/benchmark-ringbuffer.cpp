@@ -64,10 +64,7 @@ void consumerTask(SpscQueue* queue)
 			break;
 		}
 
-		/*if (readBytes == 0)
-		{
-			std::this_thread::sleep_for(std::chrono::nanoseconds(2));
-		}*/
+		std::this_thread::yield();
 	}
 }
 
@@ -90,11 +87,12 @@ void publisherTask(SpscQueue* queue)
 	auto start = std::chrono::system_clock::now();
 	while (true)
 	{
-		numMessage++;
-		msg->sequence = numMessage;
-		WriteStatus status = queue->write(msg, 0, msgSize);
+		++numMessage;
 		int numberTries = 0;
-		bool isTrying = false;
+		//msg->sequence = numMessage; // TODO: investigate, quite expensive
+
+		WriteStatus status = queue->write(msg, 0, msgSize);
+		
 		while (status != WriteStatus::SUCCESSFUL && numberTries < 1000)
 		{
 			/*std::cout << "Is trying to write message : " << numMessage
@@ -110,7 +108,7 @@ void publisherTask(SpscQueue* queue)
 			numberTries++;
 		}
 
-		if (numMessage > 100000000 && status == WriteStatus::SUCCESSFUL)
+		if (numMessage == 200000000)
 		{
 			auto end = std::chrono::system_clock::now();
 			std::chrono::duration<double> elapsed_seconds = end - start;
@@ -123,7 +121,7 @@ void publisherTask(SpscQueue* queue)
 			sprintf(numPerSecond, "%F", messagesPerSecond);
 			int messageBytes = ALIGN(msgSize, ALIGNMENT) + sizeof(RecordHeader);
 			std::cout << "finished computation at " << std::ctime(&end_time)  
-				<< " elapsed time: " << elapsedTime << "s (100 millions)\n"
+				<< " elapsed time: " << elapsedTime << "s (200 millions)\n"
 				<< " msg/s : " << numPerSecond << "\n"
 				<< " MiB/s : " << (double)(messagesPerSecond * messageBytes) / 1000000
 				<< std::endl;
