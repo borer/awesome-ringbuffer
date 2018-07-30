@@ -13,11 +13,11 @@ typedef struct Message
 
 class TestMessageHandler : public MessageHandler
 {
-	unsigned long long msgSequence = 0;
+	uint64_t msgSequence = 0;
 	bool invalidState = false;
 
 public:
-	void onMessage(const uint8_t* buffer, size_t length, unsigned long long sequence)
+	void onMessage(const uint8_t* buffer, size_t length, uint64_t sequence) final
 	{
 		Message* message = (Message*)buffer;
 		if (msgSequence + 1 == sequence)
@@ -74,11 +74,8 @@ void consumerTask(SpscQueue* queue)
 typedef struct
 {
 	size_t length;
-	unsigned long long sequence;
-	char type;
-	char padding1, padding2;
-	char end;
-
+	uint64_t sequence;
+	int type;
 } RecordHeader;
 
 #define ALIGNMENT (2 * sizeof(int32_t))

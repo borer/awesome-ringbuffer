@@ -8,17 +8,14 @@
 
 typedef struct Message
 {
-	long long sequence;
+	uint64_t sequence;
 };
 
 typedef struct
 {
 	size_t length;
-	unsigned long long sequence;
-	char type;
-	char padding1, padding2;
-	char end;
-
+	uint64_t sequence;
+	int type;
 } RecordHeader;
 
 #define ALIGNMENT (2 * sizeof(int32_t))
@@ -36,7 +33,6 @@ void publisherTask(SpscQueue* queue)
 	while(true)
 	{
 		numMessage++;
-		msg->sequence = numMessage;
 		WriteStatus status = queue->write(msg, 0, msgSize);
 
 		if (numMessage == maxMessages)
