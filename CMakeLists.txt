@@ -13,6 +13,7 @@ set(META_VERSION_MINOR       "0")
 project(${META_PROJECT_NAME} C CXX)
 
 option(RINGBUFFER_TESTS "Enable tests" ON)
+option(RINGBUFFER_BENCHMARKS "Enable benchmarks" ON)
 
 ########################################################## Global Variables :)
 
@@ -23,18 +24,19 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 set(RINGBUFFER_SOURCE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(RINGBUFFER_INCLUDE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(RINGBUFFER_TEST_PATH "${CMAKE_CURRENT_SOURCE_DIR}/test")
+set(RINGBUFFER_BENCHMARK_PATH "${CMAKE_CURRENT_SOURCE_DIR}/benchmark")
 
 ########################################################## Defaults
 
 if (${CMAKE_CURRENT_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_BINARY_DIR})
-    message(FATAL_ERROR "In-source builds not allowed. Please make a new directory (called a build directory)"
-        "and run CMake from there. You may need to remove CMakeCache.txt.")
+	message(FATAL_ERROR "In-source builds not allowed. Please make a new directory (called a build directory)"
+		"and run CMake from there. You may need to remove CMakeCache.txt.")
 endif()
 
 
 # default built type is Release
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build" FORCE)
+	set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build" FORCE)
 endif(NOT CMAKE_BUILD_TYPE)
 
 ########################################################## Threads
@@ -46,17 +48,16 @@ find_package (Threads REQUIRED)
 
 include(cmake/BuildSettings.cmake)
 
-########################################################## Test
-
-if(RINGBUFFER_TESTS)
-    enable_testing()
-    include(CTest)
-endif()
-
 ########################################################## Building Ring buffer
 
 add_subdirectory(${RINGBUFFER_SOURCE_PATH})
 
 if(RINGBUFFER_TESTS)
+	enable_testing()
+	include(CTest)
 	add_subdirectory(${RINGBUFFER_TEST_PATH})
+endif()
+
+if(RINGBUFFER_BENCHMARKS)
+	add_subdirectory(${RINGBUFFER_BENCHMARK_PATH})
 endif()
