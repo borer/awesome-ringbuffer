@@ -117,7 +117,7 @@ void publisherTask(SpscQueue* queue)
 			start = end;
 			double elapsedTime = elapsed_seconds.count();
 			double messagesPerSecond = (double)numMessage / elapsedTime;
-			char numPerSecond[10];
+			char numPerSecond[50];
 			sprintf(numPerSecond, "%F", messagesPerSecond);
 			int messageBytes = ALIGN(msgSize, ALIGNMENT) + sizeof(RecordHeader);
 			std::cout << "finished computation at " << std::ctime(&end_time)  

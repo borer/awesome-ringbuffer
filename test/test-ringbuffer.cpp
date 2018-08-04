@@ -16,7 +16,7 @@ class TestMessageHandler : public MessageHandler
 	unsigned long long lastSequence = 0;
 
 public:
-	void onMessage(const uint8_t* buffer, size_t length, unsigned long long sequence)
+	void onMessage(const uint8_t* buffer, size_t length, uint64_t sequence)
 	{
 		lastMsgLength = length;
 		lastMsg = new std::string((const char*)buffer, length);
