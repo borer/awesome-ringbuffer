@@ -1,49 +1,26 @@
-list(APPEND CUSTOM_INCLUDE_DIRECTORIES 
-  "${CMAKE_CURRENT_SOURCE_DIR}"
-  "../src/"
+set(TEST_INCLUDE_DIRECTORIES 
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${RINGBUFFER_INCLUDE_PATH}
 )
-
-set(THREADS_PREFER_PTHREAD_FLAG ON)
-find_package (Threads REQUIRED)
 
 file(GLOB TEST_SOURCES *.cpp)
 
-enable_testing()
+function(ringbuffer_test name file)
+    add_executable(${name} ${filename})
+	target_include_directories(${name} PRIVATE ${TEST_INCLUDE_DIRECTORIES})
+    set_target_properties(${name} PROPERTIES ${DEFAULT_PROJECT_OPTIONS})
+    target_compile_options(${name} PRIVATE ${DEFAULT_COMPILE_OPTIONS})
+    target_compile_definitions(${name} PRIVATE ${DEFAULT_COMPILE_DEFINITIONS})
+	target_link_libraries(${name} LINK_PUBLIC ${RINGBUFFER_LIBRARY_NAME} Threads::Threads)
+	add_test(NAME ${name} COMMAND ${name})
+endfunction()
+
+message("Creating tests targets...")
 
 foreach(filename ${TEST_SOURCES})
-	get_filename_component(testname ${filename} NAME_WE)
+	get_filename_component(name ${filename} NAME_WE)
 
-	add_executable(${testname} ${filename})
+	ringbuffer_test(${name} ${filename})
 
-	message("include dirs for ${filename} : ${CUSTOM_INCLUDE_DIRECTORIES}")
-
-	target_include_directories(${testname}
-	    PRIVATE
-	    ${CUSTOM_INCLUDE_DIRECTORIES}
-	)
-
-    set_target_properties(${testname}
-        PROPERTIES
-        ${DEFAULT_PROJECT_OPTIONS}
-    )
-    
-    target_compile_options(${testname}
-        PRIVATE
-        ${DEFAULT_COMPILE_OPTIONS}
-    )
-    
-    target_compile_definitions(${testname}
-    	PRIVATE
-    	${DEFAULT_COMPILE_DEFINITIONS}
-	)
-	
-	target_link_libraries(${testname} 
-		LINK_PUBLIC 
-		${ringbufferLibaryName}
-		Threads::Threads
-	)
-	
-	add_test(${testname} ${testname})
-
-	message("found test ${filename} : ${testname}")
+	message("${filename} : ${filename}")
 endforeach(filename)

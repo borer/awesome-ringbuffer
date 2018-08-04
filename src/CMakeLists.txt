@@ -1,31 +1,27 @@
-message("building ${ringbufferLibaryName} library ")
-
-list(APPEND CUSTOM_INCLUDE_DIRECTORIES 
-  "${CMAKE_CURRENT_SOURCE_DIR}"
-)
+message("Building ${RINGBUFFER_LIBRARY_NAME} library")
 
 set(SOURCES
   spsc_queue.cpp
 )
 
-add_library(${ringbufferLibaryName} STATIC ${SOURCES})
+add_library(${RINGBUFFER_LIBRARY_NAME} STATIC ${SOURCES})
 
-target_include_directories(${ringbufferLibaryName}
+target_include_directories(${RINGBUFFER_LIBRARY_NAME}
     PUBLIC 
-    ${CUSTOM_INCLUDE_DIRECTORIES}
+    ${RINGBUFFER_INCLUDE_PATH}
 )
 
-set_target_properties(${ringbufferLibaryName}
+set_target_properties(${RINGBUFFER_LIBRARY_NAME}
     PROPERTIES
     ${DEFAULT_PROJECT_OPTIONS}
 )
 
-target_compile_definitions(${ringbufferLibaryName}
+target_compile_definitions(${RINGBUFFER_LIBRARY_NAME}
     PUBLIC 
     ${DEFAULT_COMPILE_DEFINITIONS}
 )
 
-target_compile_options(${ringbufferLibaryName}
+target_compile_options(${RINGBUFFER_LIBRARY_NAME}
     PUBLIC 
     ${DEFAULT_COMPILE_OPTIONS}
 )

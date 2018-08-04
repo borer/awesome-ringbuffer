@@ -67,7 +67,7 @@ set(DEFAULT_COMPILE_OPTIONS)
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "MSVC")
     set(DEFAULT_COMPILE_OPTIONS ${DEFAULT_COMPILE_OPTIONS}
         /MP           # -> build with multiple processes
-        /W4           # -> warning level 4
+        /Wall         # -> warning level max
         # /WX         # -> treat warnings as errors
 
         /wd4251       # -> disable warning: 'identifier': class 'type' needs to have dll-interface to be used by clients of class 'type2'
@@ -109,8 +109,10 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU" OR "${CMAKE_CXX_COMPILER_ID}" MATCH
         -Wuninitialized
         -Wmissing-field-initializers
         
-        #-O3
-        #-msse3
+        $<$<CONFIG:Release>: 
+        -O3
+        -msse3
+        >
         
         $<$<CXX_COMPILER_ID:GNU>:
             -Wmaybe-uninitialized
