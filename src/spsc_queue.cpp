@@ -1,38 +1,11 @@
 #include <cstring>
 #include <cassert>
+
 #include "spsc_queue.h"
 #include "queue_atomic_64.h"
+#include "binutils.h"
 
 //#define ZERO_OUT_READ_MEMORY
- 
-#define MSG_DATA_TYPE 0x01
-#define MSG_PADDING_TYPE 0x02
-#define MSG_HEADER_ENDING 0x66
-
-#define WRITE_DATA_MSG(header, lengthMsg, sequenceMsg) \
-	header->length = lengthMsg; \
-	header->sequence = sequenceMsg; \
-	header->type = MSG_DATA_TYPE;
-
-#define WRITE_PADDING_MSG(header, lengthMsg) \
-	header->length = lengthMsg; \
-	header->sequence = 0; \
-	header->type = MSG_PADDING_TYPE;
-
-#define RECORD_HEADER_LENGTH sizeof(RecordHeader)
-
-#define ALIGNMENT (2 * sizeof(int32_t))
-#define IS_POWER_OF_TWO(value) ((value) > 0 && (((value) & (~(value) + 1)) == (value)))
-#define ALIGN(value, alignment) (((value) + ((alignment) - 1)) & ~((alignment) - 1))
-#define GET_POSITION(value, capacity) value & (capacity - 1)
-
-typedef struct
-{
-	size_t length;
-	uint64_t sequence;
-	int type;
-
-} RecordHeader;
 
 SpscQueue::SpscQueue(size_t capacity) : capacity(capacity)
 {
@@ -53,13 +26,13 @@ size_t SpscQueue::getCapacity()
 	return this->capacity;
 }
 
-WriteStatus SpscQueue::write(const void* msg, size_t offset, size_t lenght)
+WriteStatus SpscQueue::write(const void* message, size_t offset, size_t lenght)
 {
 	size_t alignedLength = ALIGN(lenght, ALIGNMENT);
 	size_t recordLength = alignedLength + RECORD_HEADER_LENGTH;
 	size_t localTail = this->tail;
 
-	if (recordLength >= this->capacity)
+	if (recordLength > this->capacity)
 	{
 		return WriteStatus::MSG_TOO_BIG;
 	}
@@ -104,7 +77,7 @@ WriteStatus SpscQueue::write(const void* msg, size_t offset, size_t lenght)
 
 	//store the message contents
 	void* bufferOffset = (void*)(this->buffer + localTailPosition + RECORD_HEADER_LENGTH);
-	std::memcpy(bufferOffset, (const void*)((uint8_t*)msg + offset), lenght);
+	std::memcpy(bufferOffset, (const void*)((uint8_t*)message + offset), lenght);
 
 	localTail = localTail + recordLength;
 	RING_BUFFER_PUT_ORDERED(this->tail, localTail);

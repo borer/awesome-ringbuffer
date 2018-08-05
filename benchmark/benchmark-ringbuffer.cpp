@@ -5,6 +5,7 @@
 #include <ctime>
 
 #include "spsc_queue.h"
+#include "binutils.h"
 
 typedef struct Message
 {
@@ -67,16 +68,6 @@ void consumerTask(SpscQueue* queue)
 		std::this_thread::yield();
 	}
 }
-
-typedef struct
-{
-	size_t length;
-	uint64_t sequence;
-	int type;
-} RecordHeader;
-
-#define ALIGNMENT (2 * sizeof(int32_t))
-#define ALIGN(value, alignment) (((value) + ((alignment) - 1)) & ~((alignment) - 1))
 
 void publisherTask(SpscQueue* queue)
 {

@@ -5,21 +5,12 @@
 #include <ctime>
 
 #include "spsc_queue.h"
+#include "binutils.h"
 
 typedef struct Message
 {
 	uint64_t sequence;
 };
-
-typedef struct
-{
-	size_t length;
-	uint64_t sequence;
-	int type;
-} RecordHeader;
-
-#define ALIGNMENT (2 * sizeof(int32_t))
-#define ALIGN(value, alignment) (((value) + ((alignment) - 1)) & ~((alignment) - 1))
 
 class TestMessageHandler : public MessageHandler
 {

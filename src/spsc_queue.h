@@ -4,25 +4,11 @@
 #include <cstddef>
 #include <cstdint>
 
-#define RING_BUFFER_CACHE_LINE_LENGTH (64)
-
-class MessageHandler
-{
-public:
-	virtual void onMessage(const uint8_t* buffer, size_t lenght, uint64_t messageSequence) = 0;
-	virtual ~MessageHandler() {}
-};
-
-enum WriteStatus
-{
-	INVALID_MSG = 1,
-	MSG_TOO_BIG = 2,
-	QUEUE_FULL = 3,
-	SUCCESSFUL = 0
-};
+#include "queue.h"
 
 class SpscQueue
 {
+protected:
 	uint8_t begin_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH)];
 	uint8_t* buffer;
 	const size_t capacity;
@@ -42,7 +28,7 @@ class SpscQueue
 
 public:
 	SpscQueue(size_t capacity);
-	WriteStatus write(const void* msg, size_t offset, size_t lenght);
+	WriteStatus write(const void* message, size_t offset, size_t lenght);
 	size_t read(MessageHandler* handler);
 	size_t getCapacity();
 	~SpscQueue();
