@@ -1,4 +1,5 @@
 #include <thread>
+#include <cassert>
 
 #include "spsc_queue_orchestrator.h"
 
@@ -7,6 +8,8 @@
 
 SpscQueueOrchestrator::SpscQueueOrchestrator(size_t capacity, std::shared_ptr<MessageHandler> handler)
 {
+	assert(handler == nullptr);
+
 	this->queue = std::make_unique<SpscQueue>(capacity);
 	this->handler = handler;
 
