@@ -3,6 +3,7 @@ message("Building ${RINGBUFFER_LIBRARY_NAME} library")
 set(SOURCES
   spsc_queue.cpp
   spsc_queue_orchestrator.cpp
+  queue_wait_strategy.cpp
 )
 
 add_library(${RINGBUFFER_LIBRARY_NAME} STATIC ${SOURCES})

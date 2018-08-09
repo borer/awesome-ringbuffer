@@ -121,7 +121,8 @@ int main(int argc, char **argv)
 
 	std::cout << "Init" << std::endl;
 	std::shared_ptr<TestMessageHandler> handler = std::make_shared<TestMessageHandler>();
-	SpscQueueOrchestrator myRingBuffer(capacity, handler);
+	std::shared_ptr<QueueWaitStrategy> waitStrategy = std::make_shared<YieldingStrategy>();
+	SpscQueueOrchestrator myRingBuffer(capacity, handler, waitStrategy);
 	std::cout << "Created RingBuffer with size : " << capacity << std::endl;
 
 	myRingBuffer.startConsumer();

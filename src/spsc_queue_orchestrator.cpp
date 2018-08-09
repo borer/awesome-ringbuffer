@@ -6,12 +6,17 @@
 #define synchronized(m) \
     for(std::unique_lock<std::recursive_mutex> lk(m); lk; lk.unlock())
 
-SpscQueueOrchestrator::SpscQueueOrchestrator(size_t capacity, std::shared_ptr<MessageHandler> handler)
+SpscQueueOrchestrator::SpscQueueOrchestrator(
+	size_t capacity, 
+	std::shared_ptr<MessageHandler> handler,
+	std::shared_ptr<QueueWaitStrategy> waitStrategy)
 {
-	assert(handler == nullptr);
+	assert(handler != nullptr);
+	assert(waitStrategy != nullptr);
 
 	this->queue = std::make_unique<SpscQueue>(capacity);
 	this->handler = handler;
+	this->waitStrategy = waitStrategy;
 
 	this->shouldStopConsumer = false;
 	this->isConsumerStarted = false;
@@ -24,8 +29,7 @@ void SpscQueueOrchestrator::consumerTask()
 		size_t readBytes = this->queue->read(handler.get());
 		if (readBytes == 0)
 		{
-			//TODO: add waiting strategies (busy spin, yielding, pausing)
-			std::this_thread::yield();
+			this->waitStrategy->wait();
 		}
 	}
 
