@@ -24,12 +24,15 @@ SpscQueueOrchestrator::SpscQueueOrchestrator(
 
 void SpscQueueOrchestrator::consumerTask()
 {
+	thread_local MessageHandler *messaageHandler = handler.get();
+	thread_local QueueWaitStrategy *myWaitStrategy = this->waitStrategy.get();
+
 	while (shouldConsume)
 	{
-		size_t readBytes = this->queue->read(handler.get());
+		thread_local size_t readBytes = this->queue->read(messaageHandler);
 		if (readBytes == 0)
 		{
-			this->waitStrategy->wait();
+			myWaitStrategy->wait();
 		}
 	}
 
@@ -65,12 +68,6 @@ void SpscQueueOrchestrator::stopConsumer()
 WriteStatus SpscQueueOrchestrator::write(const void * message, size_t offset, size_t lenght)
 {
 	return queue->write(message, offset, lenght);
-}
-
-WriteStatus SpscQueueOrchestrator::writeBatch(const void * message, size_t offset, size_t lenght, bool isEndOfBatch)
-{
-	//TODO: add producer batching
-	return WriteStatus::INVALID_MSG;
 }
 
 SpscQueueOrchestrator::~SpscQueueOrchestrator()

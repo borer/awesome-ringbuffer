@@ -25,7 +25,6 @@ public:
 	void startConsumer();
 	void stopConsumer();
 	WriteStatus write(const void* message, size_t offset, size_t lenght);
-	WriteStatus writeBatch(const void* message, size_t offset, size_t lenght, bool isEndOfBatch);
 
 	~SpscQueueOrchestrator();
 };
