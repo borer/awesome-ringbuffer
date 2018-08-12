@@ -16,18 +16,11 @@ public:
 	uint64_t msgSequence = 0;
 	Message* lastMessage;
 
-	void onMessage(const uint8_t* buffer, size_t length, uint64_t sequence) final
+	void onMessage(const uint8_t* buffer, size_t length) final
 	{
 		Message* message = (Message*)buffer;
-		if (msgSequence + 1 == sequence)
-		{
-			lastMessage = message;
-			msgSequence = sequence;
-		}
-		else
-		{
-			FAIL();
-		}
+		lastMessage = message;
+		msgSequence = msgSequence + 1;
 	};
 
 	virtual ~TestSequenceMessageHandler() {};

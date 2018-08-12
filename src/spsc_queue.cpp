@@ -12,7 +12,6 @@ SpscQueue::SpscQueue(size_t capacity) : capacity(capacity)
    assert(IS_POWER_OF_TWO(capacity));
 
    this->buffer = new uint8_t[this->capacity];
-   this->messageSequence = 0;
 
    this->head = 0;
    this->cacheHead = 0;
@@ -49,8 +48,6 @@ WriteStatus SpscQueue::write(const void* message, size_t offset, size_t lenght)
 		}
 	}
 
-	uint64_t currentSequence = ++this->messageSequence;
-
 	bool isNeedForWrap = localTailPosition + recordLength >= this->capacity;
 	if (isNeedForWrap)
 	{
@@ -73,7 +70,7 @@ WriteStatus SpscQueue::write(const void* message, size_t offset, size_t lenght)
 
 	//store the message header
 	RecordHeader* header = (RecordHeader*)(this->buffer + localTailPosition);
-	WRITE_DATA_MSG(header, alignedLength, this->messageSequence)
+	WRITE_DATA_MSG(header, alignedLength)
 
 	//store the message contents
 	void* bufferOffset = (void*)(this->buffer + localTailPosition + RECORD_HEADER_LENGTH);
@@ -125,7 +122,7 @@ size_t SpscQueue::read(MessageHandler* handler)
 		}
 
 		uint8_t* msg = (uint8_t*)(this->buffer + localHeadPosition + RECORD_HEADER_LENGTH);
-		handler->onMessage(msg, msgLength, header->sequence);
+		handler->onMessage(msg, msgLength);
 
 		#ifdef ZERO_OUT_READ_MEMORY
 				std::memset((void*)&this->buffer[localHeadPosition], 0, RECORD_HEADER_LENGTH + msgLength);

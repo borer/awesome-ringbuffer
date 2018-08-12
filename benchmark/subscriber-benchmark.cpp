@@ -18,16 +18,16 @@ class TestMessageHandler : public MessageHandler
 	bool invalidState = false;
 
 public:
-	void onMessage(const uint8_t* buffer, size_t length, uint64_t sequence) final
+	void onMessage(const uint8_t* buffer, size_t length) final
 	{
 		Message* message = (Message*)buffer;
-		if (msgSequence + 1 == sequence)
+		if (msgSequence + 1 == message->sequence)
 		{
-			msgSequence = sequence;
+			msgSequence = message->sequence;
 		}
 		else
 		{
-			std::cout << "Expected " << msgSequence + 1 << " got from ringbuffer " << sequence << std::endl;
+			std::cout << "Expected " << msgSequence + 1 << " got from message " << message->sequence << std::endl;
 			invalidState = true;
 		}
 	};

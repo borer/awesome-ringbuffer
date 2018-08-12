@@ -12,12 +12,10 @@
 
 #define WRITE_DATA_MSG(header, lengthMsg, sequenceMsg) \
 	header->length = lengthMsg; \
-	header->sequence = sequenceMsg; \
 	header->type = MSG_DATA_TYPE;
 
 #define WRITE_PADDING_MSG(header, lengthMsg) \
 	header->length = lengthMsg; \
-	header->sequence = 0; \
 	header->type = MSG_PADDING_TYPE;
 
 #define RECORD_HEADER_LENGTH sizeof(RecordHeader)
@@ -27,7 +25,6 @@
 typedef struct
 {
 	size_t length;
-	uint64_t sequence;
 	int type;
 
 } RecordHeader;
@@ -43,7 +40,7 @@ enum WriteStatus
 class MessageHandler
 {
 public:
-	virtual void onMessage(const uint8_t* buffer, size_t lenght, uint64_t messageSequence) = 0;
+	virtual void onMessage(const uint8_t* buffer, size_t lenght) = 0;
 	virtual ~MessageHandler() {}
 };
 

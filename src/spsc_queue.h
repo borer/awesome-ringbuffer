@@ -6,15 +6,15 @@
 
 #include "queue.h"
 
+#pragma pack(push)
+#pragma pack(4)
 class SpscQueue
 {
 protected:
 	uint8_t begin_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH)];
 	uint8_t* buffer;
 	const size_t capacity;
-	uint8_t end_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH)];
-	uint64_t messageSequence;
-	uint8_t messageSequence_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(uint64_t)];
+	uint8_t end_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(size_t)];
 
 	size_t head;
 	uint8_t head_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(size_t)];
@@ -53,5 +53,6 @@ public:
 		return head & (capacity - 1);
 	}
 };
+#pragma pack(pop)
 
 #endif // SPSC_QUEUE_H
