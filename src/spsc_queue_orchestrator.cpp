@@ -18,13 +18,13 @@ SpscQueueOrchestrator::SpscQueueOrchestrator(
 	this->handler = handler;
 	this->waitStrategy = waitStrategy;
 
-	this->shouldStopConsumer = false;
+	this->shouldConsume = false;
 	this->isConsumerStarted = false;
 }
 
 void SpscQueueOrchestrator::consumerTask()
 {
-	while (!shouldStopConsumer)
+	while (shouldConsume)
 	{
 		size_t readBytes = this->queue->read(handler.get());
 		if (readBytes == 0)
@@ -35,7 +35,7 @@ void SpscQueueOrchestrator::consumerTask()
 
 	synchronized(this->consumerMutex)
 	{
-		this->shouldStopConsumer = false;
+		this->shouldConsume = false;
 		this->isConsumerStarted = false;
 	}
 }
@@ -50,7 +50,7 @@ void SpscQueueOrchestrator::startConsumer()
 		}
 
 		this->isConsumerStarted = true;
-		this->shouldStopConsumer = false;
+		this->shouldConsume = true;
 		
 		std::thread consumerThread(&SpscQueueOrchestrator::consumerTask, this);
 		consumerThread.detach();
@@ -59,7 +59,7 @@ void SpscQueueOrchestrator::startConsumer()
 
 void SpscQueueOrchestrator::stopConsumer()
 {
-	this->shouldStopConsumer = true;
+	this->shouldConsume = false;
 }
 
 WriteStatus SpscQueueOrchestrator::write(const void * message, size_t offset, size_t lenght)

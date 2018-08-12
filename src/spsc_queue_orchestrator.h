@@ -13,7 +13,7 @@ class SpscQueueOrchestrator
 
 	std::recursive_mutex consumerMutex;
 	bool isConsumerStarted;
-	bool shouldStopConsumer;
+	bool shouldConsume;
 
 	void consumerTask();
 
