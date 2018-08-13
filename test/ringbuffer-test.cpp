@@ -23,6 +23,11 @@ public:
 		msgSequence = msgSequence + 1;
 	};
 
+	Message* getLastMessage()
+	{
+		return lastMessage;
+	}
+
 	virtual ~TestSequenceMessageHandler() {};
 };
 
@@ -53,6 +58,11 @@ public:
 	{
 		this->tail = tail;
 	};
+
+	void setCacheTail(size_t cacheTail)
+	{
+		this->cacheTail = cacheTail;
+	};
 };
 
 TEST_CASE("Should be able to write a single message", "[ringbuffer]") 
@@ -71,13 +81,23 @@ TEST_CASE("Should be able to write a padding message before wrapping", "[ringbuf
 	size_t messageSize = sizeof(Message);
 	size_t totalMessageSize = ALIGN(messageSize, ALIGNMENT) + RECORD_HEADER_LENGTH;
 	size_t capacity = 128;
+	unsigned long long expectedValue = 456;
+	
 	MutableSPSCQueue ringbuffer(capacity);
-	ringbuffer.setHead(capacity - totalMessageSize - RECORD_HEADER_LENGTH);
+	ringbuffer.setHead(capacity - RECORD_HEADER_LENGTH);
 	ringbuffer.setTail(capacity - RECORD_HEADER_LENGTH);
+	ringbuffer.setCacheTail(capacity + totalMessageSize);
 
+	TestSequenceMessageHandler handler;
+
+	msg.testValue = expectedValue;
 	WriteStatus status = ringbuffer.write((const void*)&msg, 0, messageSize);
 	REQUIRE(status == WriteStatus::SUCCESSFUL);
 	REQUIRE(ringbuffer.getTail() == capacity + totalMessageSize);
+
+	size_t readBytes = ringbuffer.read((MessageHandler*)&handler);
+	REQUIRE(readBytes > 0);
+	REQUIRE(handler.getLastMessage()->testValue == expectedValue);
 }
 
 TEST_CASE("Should skip writing a padding message before wrapping if not enought space", "[ringbuffer]")
@@ -87,12 +107,21 @@ TEST_CASE("Should skip writing a padding message before wrapping if not enought 
 	size_t totalMessageSize = ALIGN(messageSize, ALIGNMENT) + RECORD_HEADER_LENGTH;
 	size_t capacity = 128;
 	MutableSPSCQueue ringbuffer(capacity);
-	ringbuffer.setHead(capacity - totalMessageSize - RECORD_HEADER_LENGTH);
+	ringbuffer.setHead(capacity - 2);
 	ringbuffer.setTail(capacity - 2);
+	ringbuffer.setCacheTail(capacity + totalMessageSize);
+	unsigned long long expectedValue = 123;
 
+	msg.testValue = expectedValue;
 	WriteStatus status = ringbuffer.write((const void*)&msg, 0, messageSize);
 	REQUIRE(status == WriteStatus::SUCCESSFUL);
 	REQUIRE(ringbuffer.getTail() == capacity + totalMessageSize);
+
+	TestSequenceMessageHandler handler;
+
+	size_t readBytes = ringbuffer.read((MessageHandler*)&handler);
+	REQUIRE(readBytes > 0);
+	REQUIRE(handler.getLastMessage()->testValue == expectedValue);
 }
 
 TEST_CASE("Should read nothing from empty buffer", "[ringbuffer]")

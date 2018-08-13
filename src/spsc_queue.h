@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <atomic>
 
 #include "queue.h"
 
@@ -16,12 +17,12 @@ protected:
 	const size_t capacity;
 	uint8_t end_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(size_t)];
 
-	size_t head;
+	std::atomic<size_t> head;
 	uint8_t head_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(size_t)];
 	size_t cacheTail; //used locally by read
 	uint8_t cacheTail_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(size_t)];
 
-	size_t tail;
+	std::atomic<size_t> tail;
 	uint8_t tail_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(size_t)];
 	size_t cacheHead; //used locally by writes
 	uint8_t cacheHead_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(size_t)];
