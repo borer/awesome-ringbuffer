@@ -104,15 +104,16 @@ void consumerTask(MpscQueue* queue)
 
 void publisherTask(MpscQueue* queue)
 {
+	uint64_t numMessages = 0;
 	size_t msgSize = sizeof(Message);
 	Message* msg = new Message();
 	
 	while (true)
 	{
 		int numberTries = 0;
-
+		numMessages = numMessages + 1;
+		msg->sequence = numMessages;
 		WriteStatus status = queue->write(msg, 0, msgSize);
-		std::this_thread::yield();
 		
 		while (status != WriteStatus::SUCCESSFUL && numberTries < 1000)
 		{

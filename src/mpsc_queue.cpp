@@ -59,7 +59,7 @@ WriteStatus MpscQueue::write(const void* message, size_t offset, size_t lenght)
 		{
 			//don't write padding header if there is not enought space and just wrap
 			size_t remainingCapacity = this->capacity - localTailPosition;
-			if (remainingCapacity > RECORD_HEADER_LENGTH)
+			if (remainingCapacity >= RECORD_HEADER_LENGTH)
 			{
 				size_t paddingSize = this->capacity - localTailPosition - RECORD_HEADER_LENGTH;
 				newTail = newTail + paddingSize + RECORD_HEADER_LENGTH;
@@ -84,7 +84,7 @@ WriteStatus MpscQueue::write(const void* message, size_t offset, size_t lenght)
 	{
 		//don't write padding header if there is not enought space and just wrap
 		size_t remainingCapacity = this->capacity - localTailPosition;
-		if (remainingCapacity > RECORD_HEADER_LENGTH)
+		if (remainingCapacity >= RECORD_HEADER_LENGTH)
 		{
 			RecordHeader* header = (RecordHeader*)(this->buffer + localTailPosition);
 			size_t paddingSize = this->capacity - localTailPosition - RECORD_HEADER_LENGTH;
@@ -132,7 +132,7 @@ size_t MpscQueue::read(MessageHandler* handler)
 		size_t localHeadPosition = GET_POSITION(localHead, this->capacity);
 		//check if the remaining capacity is less than a record header even to fit in
 		size_t remainingCapacity = this->capacity - localHeadPosition;
-		if (remainingCapacity < RECORD_HEADER_LENGTH)
+		if (remainingCapacity <= RECORD_HEADER_LENGTH)
 		{
 			#ifdef ZERO_OUT_READ_MEMORY
 				std::memset((void*)&this->buffer[localHeadPosition], 0, remainingCapacity);
@@ -160,7 +160,9 @@ size_t MpscQueue::read(MessageHandler* handler)
 		#ifdef ZERO_OUT_READ_MEMORY
 				std::memset((void*)&this->buffer[localHeadPosition], 0, RECORD_HEADER_LENGTH + msgLength);
 		#endif
-		localHead = localHead + RECORD_HEADER_LENGTH + msgLength;
+
+		size_t alignedLength = ALIGN(msgLength, ALIGNMENT);
+		localHead = localHead + RECORD_HEADER_LENGTH + alignedLength;
 	}
 
 	size_t readBytes = localHead - this->head;
