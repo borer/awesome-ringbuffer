@@ -21,16 +21,15 @@ public:
 	void onMessage(const uint8_t* buffer, size_t length) final
 	{
 		Message* message = (Message*)buffer;
-		msgSequence = message->sequence;
-		/*if (msgSequence + 1 == sequence)
+		if (msgSequence + 1 == message->sequence)
 		{
-			msgSequence = sequence;
+			msgSequence = message->sequence;
 		}
 		else
 		{
-			std::cout << "Expected " << msgSequence + 1 << " got from ringbuffer " << sequence << std::endl;
+			std::cout << "Expected " << msgSequence + 1 << " got from ringbuffer " << message->sequence << std::endl;
 			invalidState = true;
-		}*/
+		}
 	};
 
 	uint64_t getMsgSequence()
@@ -59,7 +58,7 @@ void consumerTask(MpscQueue* queue)
 	{
 		size_t readBytes = queue->read((MessageHandler*)handler);
 
-		/*if (handler->isInvalidState())
+		if (handler->isInvalidState())
 		{
 			std::cout << "Last read msg : " << handler->getMsgSequence() << " (size " << 12 + sizeof(Message) << " ) "
 				<< ", head: " << queue->getHead()
@@ -68,13 +67,15 @@ void consumerTask(MpscQueue* queue)
 				<< ", tailPosition: " << queue->getTailPosition()
 				<< std::endl;
 			break;
-		}*/
+		}
 
-		
-		//std::this_thread::yield();
+		if (readBytes == 0)
+		{
+			std::this_thread::yield();
+		}
 
 		numMessage = handler->getMsgSequence();
-		if (numMessage > 2000000)
+		if ((numMessage % 200000000) == 0)
 		{
 			auto end = std::chrono::system_clock::now();
 			std::chrono::duration<double> elapsed_seconds = end - start;

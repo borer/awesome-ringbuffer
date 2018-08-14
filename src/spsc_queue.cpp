@@ -2,7 +2,6 @@
 #include <cassert>
 
 #include "spsc_queue.h"
-//#include "queue_atomic_64.h"
 #include "binutils.h"
 
 //#define ZERO_OUT_READ_MEMORY
@@ -40,7 +39,6 @@ WriteStatus SpscQueue::write(const void* message, size_t offset, size_t lenght)
 	bool isOverridingNonReadData = (localTail + recordLength) - this->cacheHead >= this->capacity;
 	if (isOverridingNonReadData)
 	{
-		//RING_BUFFER_GET_VOLATILE(this->cacheHead, this->head);
 		this->cacheHead = this->head.load(std::memory_order_acquire);
 		bool isStillOverridingNonReadData = (localTail + recordLength) - this->cacheHead >= this->capacity;
 		if (isStillOverridingNonReadData)
@@ -78,7 +76,6 @@ WriteStatus SpscQueue::write(const void* message, size_t offset, size_t lenght)
 	std::memcpy(bufferOffset, (const void*)((uint8_t*)message + offset), lenght);
 
 	localTail = localTail + recordLength;
-	//RING_BUFFER_PUT_ORDERED(this->tail, localTail);
 	this->tail.store(localTail, std::memory_order_release);
 
 	return WriteStatus::SUCCESSFUL;
@@ -89,7 +86,6 @@ size_t SpscQueue::read(MessageHandler* handler)
 	size_t localHead = this->head.load(std::memory_order_relaxed);
 	if (localHead == this->cacheTail)
 	{
-		//RING_BUFFER_GET_VOLATILE(this->cacheTail, this->tail);
 		this->cacheTail = this->tail.load(std::memory_order_acquire);
 		if (localHead == this->cacheTail)
 		{
@@ -136,7 +132,6 @@ size_t SpscQueue::read(MessageHandler* handler)
 	}
 
 	size_t readBytes = localHead - this->head;
-	//RING_BUFFER_PUT_ORDERED(this->head, localHead);
 	this->head.store(localHead, std::memory_order_release);
 	return readBytes;
 }

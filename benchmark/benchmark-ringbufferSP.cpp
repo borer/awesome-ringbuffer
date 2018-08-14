@@ -117,7 +117,7 @@ void publisherTask(SpscQueue* queue)
 				sprintf(numPerSecond, "%F", messagesPerSecond);
 				int messageBytes = ALIGN(msgSize, ALIGNMENT) + sizeof(RecordHeader);
 				std::cout << "finished computation at " << std::ctime(&end_time)
-					<< " elapsed time: " << elapsedTime << "s (268 millions)\n"
+					<< " elapsed time: " << elapsedTime << "s (200 millions)\n"
 					<< " msg/s : " << numPerSecond << "\n"
 					<< " MiB/s : " << (double)(messagesPerSecond * messageBytes) / 1000000
 					<< std::endl;
@@ -162,8 +162,8 @@ int main(int argc, char **argv)
 	std::thread consumerThread(consumerTask, &myRingBuffer);
 	std::thread publisherThread(publisherTask, &myRingBuffer);
 
-	publisherThread.join();
 	consumerThread.join();
+	publisherThread.join();
 
 	std::cout << "Ending" << std::endl;
 	return 0;
