@@ -7,6 +7,8 @@
 
 #include "queue.h"
 
+#pragma pack(push)
+#pragma pack(4)
 class MpscQueue
 {
 protected:
@@ -54,5 +56,6 @@ public:
 		return head & (capacity - 1);
 	}
 };
+#pragma pack(pop)
 
 #endif // SPSC_QUEUE_H
