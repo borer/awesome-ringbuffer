@@ -39,7 +39,7 @@ void publisherTask(SpscQueue* queue)
 			sprintf(numPerSecond, "%F", messagesPerSecond);
 			int messageBytes = ALIGN(msgSize, ALIGNMENT) + sizeof(RecordHeader);
 			std::cout << "finished computation at " << std::ctime(&end_time)  
-				<< " elapsed time: " << elapsedTime << "s " << numMessage << "\n"
+				<< " elapsed time: " << elapsedTime << "s (" << numMessage << ")\n"
 				<< " msg/s : " << numPerSecond << "\n"
 				<< " MiB/s : " << (double)(messagesPerSecond * messageBytes) / 1000000
 				<< std::endl;

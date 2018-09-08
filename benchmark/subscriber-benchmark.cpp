@@ -32,7 +32,7 @@ public:
 		}
 	};
 
-	unsigned long long getMsgSequence()
+	uint64_t getMsgSequence()
 	{
 		return msgSequence;
 	}
@@ -74,14 +74,15 @@ void consumerTask(SpscQueue* queue)
 
 			start = end;
 			double elapsedTime = elapsed_seconds.count();
-			size_t numMessagesRead = queue->getCapacity() / message_size;
-			double messagesPerSecond = (double)numMessagesRead / elapsedTime;
-			char numPerSecond[50];
-			sprintf(numPerSecond, "%F", messagesPerSecond);
+			double messagesPerSecond = (double)handler->getMsgSequence() / elapsedTime;
+			char messagesPerSecondStr[50];
+			sprintf(messagesPerSecondStr, "%F", messagesPerSecond);
+
+			size_t maxMessages = (queue->getCapacity() / message_size) - 1;
 			
 			std::cout << "finished computation at " << std::ctime(&end_time)
-				<< " elapsed time: " << elapsedTime << "s (100 millions)\n"
-				<< " msg/s : " << numPerSecond << "\n"
+				<< " elapsed time: " << elapsedTime << "s (" << maxMessages << ")\n"
+				<< " msg/s : " << messagesPerSecondStr << "\n"
 				<< " MiB/s : " << (double)(messagesPerSecond * message_size) / 1000000
 				<< std::endl;
 
