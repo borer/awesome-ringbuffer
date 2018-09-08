@@ -112,7 +112,7 @@ void publisherTask(SpscQueue* queue)
 
 				start = end;
 				double elapsedTime = elapsed_seconds.count();
-				double messagesPerSecond = (double)numMessage / elapsedTime;
+				double messagesPerSecond = (double)200000000 / elapsedTime;
 				char numPerSecond[50];
 				sprintf(numPerSecond, "%F", messagesPerSecond);
 				int messageBytes = ALIGN(msgSize, ALIGNMENT) + sizeof(RecordHeader);

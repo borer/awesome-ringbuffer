@@ -50,8 +50,10 @@ public:
 void consumerTask(MpscQueue* queue)
 {
 	TestMessageHandler* handler = new TestMessageHandler();
-	long numIterations = 0;
+	long numIterations = 1;
 	uint64_t numMessage = 0;
+	uint64_t numMessageOffset = 0;
+	uint64_t messagesPerIteration = 200000000;
 	size_t msgSize = sizeof(Message);
 	auto start = std::chrono::system_clock::now();
 	while (true)
@@ -75,7 +77,7 @@ void consumerTask(MpscQueue* queue)
 		}
 
 		numMessage = handler->getMsgSequence();
-		if ((numMessage % 200000000) == 0)
+		if ((numMessage % messagesPerIteration) == 0)
 		{
 			auto end = std::chrono::system_clock::now();
 			std::chrono::duration<double> elapsed_seconds = end - start;
@@ -83,7 +85,7 @@ void consumerTask(MpscQueue* queue)
 
 			start = end;
 			double elapsedTime = elapsed_seconds.count();
-			double messagesPerSecond = (double)numMessage / elapsedTime;
+			double messagesPerSecond = (double)messagesPerIteration / elapsedTime;
 			char numPerSecond[50];
 			sprintf(numPerSecond, "%F", messagesPerSecond);
 			int messageBytes = ALIGN(msgSize, ALIGNMENT) + sizeof(RecordHeader);
@@ -93,6 +95,7 @@ void consumerTask(MpscQueue* queue)
 				<< " MiB/s : " << (double)(messagesPerSecond * messageBytes) / 1000000
 				<< std::endl;
 
+			numMessageOffset = numIterations * messagesPerIteration;
 			numIterations++;
 			numMessage = 0;
 			if (numIterations >= 10)
