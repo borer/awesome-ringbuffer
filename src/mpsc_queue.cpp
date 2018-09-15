@@ -10,15 +10,9 @@
 MpscQueue::MpscQueue(size_t capacity) : capacity(capacity)
 {
    assert(IS_POWER_OF_TWO(capacity));
-
    this->buffer = new uint8_t[this->capacity];
-
    this->head = 0;
-   this->cacheHead = 0;
-
    this->tail = 0;
-   this->cacheTail = 0;
-   this->writersCacheTail = 0;
 }
 
 size_t MpscQueue::getCapacity()
@@ -37,23 +31,19 @@ WriteStatus MpscQueue::write(const void* message, size_t offset, size_t lenght)
 	}
 
 	size_t localTail = 0;
-	size_t newTail = 0;
+	size_t futureTail = 0;
 	do {
-		newTail = this->writersCacheTail.load(std::memory_order_acquire);
-		localTail = newTail;
-
-		bool isOverridingNonReadData = (newTail + recordLength) - this->cacheHead >= this->capacity;
+		futureTail = this->tail.load(std::memory_order_acquire);
+		localTail = futureTail;
+		
+		size_t cacheHead2 = this->head.load(std::memory_order_acquire);
+		bool isOverridingNonReadData = (futureTail + recordLength) - cacheHead2 >= this->capacity;
 		if (isOverridingNonReadData)
 		{
-			this->cacheHead = this->head.load(std::memory_order_acquire);
-			bool isStillOverridingNonReadData = (newTail + recordLength) - this->cacheHead >= this->capacity;
-			if (isStillOverridingNonReadData)
-			{
-				return WriteStatus::QUEUE_FULL;
-			}
+			return WriteStatus::QUEUE_FULL;
 		}
 
-		size_t localTailPosition = GET_POSITION(newTail, this->capacity);
+		size_t localTailPosition = GET_POSITION(futureTail, this->capacity);
 		bool isNeedForWrap = localTailPosition + recordLength >= this->capacity;
 		if (isNeedForWrap)
 		{
@@ -62,22 +52,23 @@ WriteStatus MpscQueue::write(const void* message, size_t offset, size_t lenght)
 			if (remainingCapacity >= RECORD_HEADER_LENGTH)
 			{
 				size_t paddingSize = this->capacity - localTailPosition - RECORD_HEADER_LENGTH;
-				newTail = newTail + paddingSize + RECORD_HEADER_LENGTH;
+				futureTail = futureTail + paddingSize + RECORD_HEADER_LENGTH;
 			}
 			else
 			{
-				newTail = newTail + remainingCapacity;
+				futureTail = futureTail + remainingCapacity;
 			}
 		}
 
-		newTail = newTail + recordLength;
+		futureTail = futureTail + recordLength;
 
-	} while (!this->writersCacheTail.compare_exchange_weak(
+	} while (!this->tail.compare_exchange_weak(
 		localTail,
-		newTail,
+		futureTail,
 		std::memory_order_release,
 		std::memory_order_relaxed));
 
+	size_t bytesToWrite = 0;
 	size_t localTailPosition = GET_POSITION(localTail, this->capacity);
 	bool isNeedForWrap = localTailPosition + recordLength >= this->capacity;
 	if (isNeedForWrap)
@@ -89,14 +80,14 @@ WriteStatus MpscQueue::write(const void* message, size_t offset, size_t lenght)
 			RecordHeader* header = (RecordHeader*)(this->buffer + localTailPosition);
 			size_t paddingSize = this->capacity - localTailPosition - RECORD_HEADER_LENGTH;
 			WRITE_PADDING_MSG(header, paddingSize)
-			localTail = localTail + paddingSize + RECORD_HEADER_LENGTH;
+			bytesToWrite = bytesToWrite + paddingSize + RECORD_HEADER_LENGTH;
 		}
 		else
 		{
-			localTail = localTail + remainingCapacity;
+			bytesToWrite = bytesToWrite + remainingCapacity;
 		}
 
-		localTailPosition = GET_POSITION(localTail, this->capacity);
+		localTailPosition = GET_POSITION(localTail + bytesToWrite, this->capacity);
 	}
 
 	//store the message header
@@ -106,64 +97,55 @@ WriteStatus MpscQueue::write(const void* message, size_t offset, size_t lenght)
 	//store the message contents
 	void* bufferOffset = (void*)(this->buffer + localTailPosition + RECORD_HEADER_LENGTH);
 	std::memcpy(bufferOffset, (const void*)((uint8_t*)message + offset), lenght);
-
-	localTail = localTail + recordLength;
-	this->tail.store(localTail, std::memory_order_release);
 	
 	return WriteStatus::SUCCESSFUL;
 }
 
 size_t MpscQueue::read(MessageHandler* handler)
 {
-	size_t localHead = this->head;
-	if (localHead == this->cacheTail)
-	{
-		this->cacheTail = this->tail.load(std::memory_order_acquire);
-		if (localHead == this->cacheTail)
-		{
-			return 0;
-		}
-	}
+	size_t localHead = this->head.load(std::memory_order_relaxed);
 
-	while (localHead != this->cacheTail)
+	while (true)
 	{
 		size_t localHeadPosition = GET_POSITION(localHead, this->capacity);
 		//check if the remaining capacity is less than a record header even to fit in
 		size_t remainingCapacity = this->capacity - localHeadPosition;
 		if (remainingCapacity <= RECORD_HEADER_LENGTH)
 		{
-			#ifdef ZERO_OUT_READ_MEMORY
-				std::memset((void*)&this->buffer[localHeadPosition], 0, remainingCapacity);
-			#endif
+			std::memset((void*)&this->buffer[localHeadPosition], 0, remainingCapacity);
 			localHead = localHead + remainingCapacity;
 			localHeadPosition = GET_POSITION(localHead, this->capacity);
 		}
 
 		RecordHeader* header = (RecordHeader*)(this->buffer + localHeadPosition);
 		size_t msgLength = header->length;
+		if (msgLength <= 0)
+		{
+			break;
+		}
+
 		if (header->type == MSG_PADDING_TYPE)
 		{
-			#ifdef ZERO_OUT_READ_MEMORY
-				std::memset((void*)&this->buffer[localHeadPosition], 0, RECORD_HEADER_LENGTH + msgLength);
-			#endif
+			std::memset((void*)&this->buffer[localHeadPosition], 0, RECORD_HEADER_LENGTH + msgLength);
 			localHead = localHead + RECORD_HEADER_LENGTH + msgLength;
 			localHeadPosition = GET_POSITION(localHead, this->capacity);
 			header = (RecordHeader*)(this->buffer + localHeadPosition);
 			msgLength = header->length;
+			if (msgLength <= 0)
+			{
+				break;
+			}
 		}
 
 		uint8_t* msg = (uint8_t*)(this->buffer + localHeadPosition + RECORD_HEADER_LENGTH);
 		handler->onMessage(msg, msgLength);
 
-		#ifdef ZERO_OUT_READ_MEMORY
-				std::memset((void*)&this->buffer[localHeadPosition], 0, RECORD_HEADER_LENGTH + msgLength);
-		#endif
-
+		std::memset((void*)&this->buffer[localHeadPosition], 0, RECORD_HEADER_LENGTH + msgLength);
 		size_t alignedLength = ALIGN(msgLength, ALIGNMENT);
 		localHead = localHead + RECORD_HEADER_LENGTH + alignedLength;
 	}
 
-	size_t readBytes = localHead - this->head;
+	size_t readBytes = localHead - this->head.load(std::memory_order_relaxed);
 	this->head.store(localHead, std::memory_order_release);
 	return readBytes;
 }

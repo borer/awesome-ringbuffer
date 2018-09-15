@@ -20,16 +20,7 @@ class TestMessageHandler : public MessageHandler
 public:
 	void onMessage(const uint8_t* buffer, size_t length) final
 	{
-		Message* message = (Message*)buffer;
-		if (msgSequence + 1 == message->sequence)
-		{
-			msgSequence = message->sequence;
-		}
-		else
-		{
-			std::cout << "Expected " << msgSequence + 1 << " got from ringbuffer " << message->sequence << std::endl;
-			invalidState = true;
-		}
+		//nothing to do
 	};
 
 	uint64_t getMsgSequence()
@@ -54,6 +45,7 @@ void consumerTask(MpscQueue* queue)
 	uint64_t numMessage = 0;
 	uint64_t numMessageOffset = 0;
 	uint64_t messagesPerIteration = 268435455;
+	size_t headerSize = 12;
 	size_t msgSize = sizeof(Message);
 	auto start = std::chrono::system_clock::now();
 	while (true)
@@ -76,7 +68,7 @@ void consumerTask(MpscQueue* queue)
 			std::this_thread::yield();
 		}
 
-		numMessage = handler->getMsgSequence();
+		numMessage = numMessage + (readBytes / (msgSize + headerSize));
 		if ((numMessage & messagesPerIteration) == 0)
 		{
 			auto end = std::chrono::system_clock::now();
@@ -121,14 +113,7 @@ void publisherTask(MpscQueue* queue)
 		
 		while (status != WriteStatus::SUCCESSFUL && numberTries < 1000)
 		{
-			/*std::cout << "Is trying to write message, head: " << queue->getHead()
-				<< ", headPosition: " << queue->getHeadPosition()
-				<< ", tail: " << queue->getTail()
-				<< ", tailPosition: " << queue->getTailPosition()
-				<< ", error code " << status
-				<< std::endl;*/
-
-			std::this_thread::sleep_for(std::chrono::nanoseconds(10));
+			std::this_thread::sleep_for(std::chrono::nanoseconds(100));
 			status = queue->write(msg, 0, msgSize);
 			numberTries++;
 		}
@@ -165,12 +150,12 @@ int main()
 	MpscQueue myRingBuffer(capacity);
 	std::cout << "Created RingBuffer with size : " << myRingBuffer.getCapacity() << std::endl;
 
-	std::thread publisherThread1(publisherTask, &myRingBuffer);
-	//std::thread publisherThread2(publisherTask, &myRingBuffer);
 	std::thread consumerThread(consumerTask, &myRingBuffer);
+	std::thread publisherThread1(publisherTask, &myRingBuffer);
+	std::thread publisherThread2(publisherTask, &myRingBuffer);
 
 	publisherThread1.join();
-	//publisherThread2.join();
+	publisherThread2.join();
 	consumerThread.join();
 
 	std::cout << "Ending" << std::endl;
