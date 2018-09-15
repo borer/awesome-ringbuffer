@@ -24,7 +24,7 @@ SpscQueueOrchestrator::SpscQueueOrchestrator(
 
 void SpscQueueOrchestrator::consumerTask()
 {
-	thread_local MessageHandler *messaageHandler = handler.get();
+	thread_local MessageHandler *messaageHandler = this->handler.get();
 	thread_local QueueWaitStrategy *myWaitStrategy = this->waitStrategy.get();
 
 	while (shouldConsume)

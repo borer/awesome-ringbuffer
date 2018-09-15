@@ -8,9 +8,8 @@
 
 #define MSG_DATA_TYPE 0x01
 #define MSG_PADDING_TYPE 0x02
-#define MSG_HEADER_ENDING 0x66
 
-#define WRITE_DATA_MSG(header, lengthMsg, sequenceMsg) \
+#define WRITE_DATA_MSG(header, lengthMsg) \
 	header->length = lengthMsg; \
 	header->type = MSG_DATA_TYPE;
 
