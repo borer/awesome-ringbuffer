@@ -4,7 +4,7 @@
 #include "spsc_queue.h"
 #include "binutils.h"
 
-typedef struct
+typedef struct Message
 {
 	unsigned long long testValue;
 } Message;

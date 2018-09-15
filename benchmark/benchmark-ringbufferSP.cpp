@@ -10,7 +10,7 @@
 typedef struct Message
 {
 	uint64_t sequence;
-};
+} Message;
 
 class TestMessageHandler : public MessageHandler
 {
@@ -74,6 +74,7 @@ void consumerTask(SpscQueue* queue)
 
 void publisherTask(SpscQueue* queue)
 {
+	uint64_t messagesPerIteration = 268435455;
 	uint64_t numMessage = 0;
 	size_t msgSize = sizeof(Message);
 	Message* msg = new Message();
@@ -103,8 +104,7 @@ void publisherTask(SpscQueue* queue)
 				numberTries++;
 			}
 
-			//if ((numMessage & 268435457) == 0)
-			if ((numMessage % 200000000) == 0)
+			if ((numMessage & messagesPerIteration) == 0)
 			{
 				auto end = std::chrono::system_clock::now();
 				std::chrono::duration<double> elapsed_seconds = end - start;
@@ -112,12 +112,12 @@ void publisherTask(SpscQueue* queue)
 
 				start = end;
 				double elapsedTime = elapsed_seconds.count();
-				double messagesPerSecond = (double)200000000 / elapsedTime;
+				double messagesPerSecond = (double)messagesPerIteration / elapsedTime;
 				char numPerSecond[50];
 				sprintf(numPerSecond, "%F", messagesPerSecond);
 				int messageBytes = ALIGN(msgSize, ALIGNMENT) + sizeof(RecordHeader);
 				std::cout << "finished computation at " << std::ctime(&end_time)
-					<< " elapsed time: " << elapsedTime << "s (200 millions)\n"
+					<< " elapsed time: " << elapsedTime << "s (270 millions)\n"
 					<< " msg/s : " << numPerSecond << "\n"
 					<< " MiB/s : " << (double)(messagesPerSecond * messageBytes) / 1000000
 					<< std::endl;
@@ -151,7 +151,7 @@ void publisherTask(SpscQueue* queue)
 	exit(0);
 }
 
-int main(int argc, char **argv)
+int main()
 {
 	size_t capacity = 1048576; //~1 MiB in bytes (2^20)
 

@@ -10,7 +10,7 @@
 typedef struct Message
 {
 	uint64_t sequence;
-};
+} Message;
 
 class TestMessageHandler : public MessageHandler
 {
@@ -98,7 +98,6 @@ void prepareBuffer(SpscQueue* queue)
 	size_t msgSize = sizeof(Message);
 	Message* msg = new Message();
 	size_t numMessage = 0;
-	auto start = std::chrono::system_clock::now();
 	while(true)
 	{
 		numMessage++;
@@ -136,7 +135,7 @@ void prepareBuffer(SpscQueue* queue)
 	}
 }
 
-int main(int argc, char **argv)
+int main()
 {
 	size_t capacity = 1 << 30;
 	std::cout << "Init" << std::endl;

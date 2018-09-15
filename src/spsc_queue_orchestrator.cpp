@@ -24,12 +24,12 @@ SpscQueueOrchestrator::SpscQueueOrchestrator(
 
 void SpscQueueOrchestrator::consumerTask()
 {
-	thread_local MessageHandler *messaageHandler = this->handler.get();
-	thread_local QueueWaitStrategy *myWaitStrategy = this->waitStrategy.get();
-
+	MessageHandler *messageHandler = this->handler.get();
+	QueueWaitStrategy *myWaitStrategy = this->waitStrategy.get();
+	this->shouldConsume = true;
 	while (shouldConsume)
 	{
-		thread_local size_t readBytes = this->queue->read(messaageHandler);
+		size_t readBytes = this->queue->read(messageHandler);
 		if (readBytes == 0)
 		{
 			myWaitStrategy->wait();
@@ -53,8 +53,6 @@ void SpscQueueOrchestrator::startConsumer()
 		}
 
 		this->isConsumerStarted = true;
-		this->shouldConsume = true;
-		
 		std::thread consumerThread(&SpscQueueOrchestrator::consumerTask, this);
 		consumerThread.detach();
 	}
@@ -72,4 +70,5 @@ WriteStatus SpscQueueOrchestrator::write(const void * message, size_t offset, si
 
 SpscQueueOrchestrator::~SpscQueueOrchestrator()
 {
+	this->shouldConsume = false;
 }

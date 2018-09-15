@@ -10,7 +10,7 @@
 typedef struct Message
 {
 	uint64_t sequence;
-};
+} Message;
 
 class TestMessageHandler : public MessageHandler
 {
@@ -37,8 +37,9 @@ public:
 
 void publisherTask(SpscQueueOrchestrator* queue)
 {
+	uint64_t messagesPerIteration = 268435455;
 	long numIterations = 0;
-	long long numMessage = 0;
+	uint64_t numMessage = 0;
 	size_t msgSize = sizeof(Message);
 	Message* msg = new Message();
 	auto start = std::chrono::system_clock::now();
@@ -46,26 +47,18 @@ void publisherTask(SpscQueueOrchestrator* queue)
 	{
 		++numMessage;
 		int numberTries = 0;
-		//msg->sequence = numMessage; // TODO: investigate, quite expensive
+		msg->sequence = numMessage;
 
 		WriteStatus status = queue->write(msg, 0, msgSize);
 		
 		while (status != WriteStatus::SUCCESSFUL && numberTries < 1000)
 		{
-			/*std::cout << "Is trying to write message : " << numMessage
-				<< ", head: " << queue->getHead()
-				<< ", headPosition: " << queue->getHeadPosition()
-				<< ", tail: " << queue->getTail()
-				<< ", tailPosition: " << queue->getTailPosition()
-				<< ", error code " << status
-				<< std::endl;*/
-
 			std::this_thread::sleep_for(std::chrono::nanoseconds(10));
 			status = queue->write(msg, 0, msgSize);
 			numberTries++;
 		}
 
-		if (numMessage == 200000000)
+		if ((numMessage & messagesPerIteration) == 0)
 		{
 			auto end = std::chrono::system_clock::now();
 			std::chrono::duration<double> elapsed_seconds = end - start;
@@ -73,18 +66,17 @@ void publisherTask(SpscQueueOrchestrator* queue)
 
 			start = end;
 			double elapsedTime = elapsed_seconds.count();
-			double messagesPerSecond = (double)numMessage / elapsedTime;
+			double messagesPerSecond = (double)messagesPerIteration / elapsedTime;
 			char numPerSecond[50];
 			sprintf(numPerSecond, "%F", messagesPerSecond);
 			int messageBytes = ALIGN(msgSize, ALIGNMENT) + sizeof(RecordHeader);
 			std::cout << "finished computation at " << std::ctime(&end_time)  
-				<< " elapsed time: " << elapsedTime << "s (200 millions)\n"
+				<< " elapsed time: " << elapsedTime << "s (270 millions)\n"
 				<< " msg/s : " << numPerSecond << "\n"
 				<< " MiB/s : " << (double)(messagesPerSecond * messageBytes) / 1000000
 				<< std::endl;
 
 			numIterations++;
-			numMessage = 0;
 			if (numIterations >= 10)
 			{
 				exit(0);
@@ -115,7 +107,7 @@ void publisherTask(SpscQueueOrchestrator* queue)
 	}
 }
 
-int main(int argc, char **argv)
+int main()
 {
 	size_t capacity = 1048576; //~1 MiB in bytes (2^20)
 

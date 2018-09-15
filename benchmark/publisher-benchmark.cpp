@@ -10,7 +10,7 @@
 typedef struct Message
 {
 	uint64_t sequence;
-};
+} Message;
 
 void publisherTask(SpscQueue* queue)
 {
@@ -73,7 +73,7 @@ void publisherTask(SpscQueue* queue)
 	}
 }
 
-int main(int argc, char **argv)
+int main()
 {
 	size_t capacity = 4294967296; //~1 GiB in bytes
 	size_t message_size = ALIGN(sizeof(Message), ALIGNMENT) + sizeof(RecordHeader);

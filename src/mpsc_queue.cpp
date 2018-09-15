@@ -125,8 +125,6 @@ size_t MpscQueue::read(MessageHandler* handler)
 		}
 	}
 
-	size_t localHeadPosition = GET_POSITION(localHead, this->capacity);
-
 	while (localHead != this->cacheTail)
 	{
 		size_t localHeadPosition = GET_POSITION(localHead, this->capacity);
