@@ -147,7 +147,7 @@ int main()
 	size_t capacity = 1048576; //~1 MiB in bytes (2^20)
 
 	std::cout << "Init" << std::endl;
-	MpscQueue myRingBuffer(capacity);
+	MpscQueue myRingBuffer(capacity, 0);
 	std::cout << "Created RingBuffer with size : " << myRingBuffer.getCapacity() << std::endl;
 
 	std::thread consumerThread(consumerTask, &myRingBuffer);

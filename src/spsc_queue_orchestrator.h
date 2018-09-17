@@ -20,6 +20,7 @@ class SpscQueueOrchestrator
 public:
 	SpscQueueOrchestrator(
 		size_t capacity, 
+		size_t maxBatchRead, 
 		std::shared_ptr<MessageHandler> handler, 
 		std::shared_ptr<QueueWaitStrategy> waitStrategy);
 	void startConsumer();

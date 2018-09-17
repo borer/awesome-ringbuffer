@@ -4,9 +4,11 @@
 #include "spsc_queue.h"
 #include "binutils.h"
 
+//Enable in case setting memory to 0 after read is wanted
 //#define ZERO_OUT_READ_MEMORY
 
-SpscQueue::SpscQueue(size_t capacity) : capacity(capacity)
+SpscQueue::SpscQueue(size_t capacity, size_t maxBatchRead) : 
+	capacity(capacity), maxBatchRead(maxBatchRead)
 {
    assert(IS_POWER_OF_TWO(capacity));
 
@@ -93,7 +95,8 @@ size_t SpscQueue::read(MessageHandler* handler)
 		}
 	}
 
-	while (localHead != this->cacheTail)
+	size_t messagesRead = 0;
+	while (localHead != this->cacheTail && (messagesRead < this->maxBatchRead || this->maxBatchRead == 0))
 	{
 		size_t localHeadPosition = GET_POSITION(localHead, this->capacity);
 		//check if the remaining capacity is less than a record header even to fit in
@@ -129,6 +132,7 @@ size_t SpscQueue::read(MessageHandler* handler)
 
 		size_t alignedLength = ALIGN(msgLength, ALIGNMENT);
 		localHead = localHead + RECORD_HEADER_LENGTH + alignedLength;
+		messagesRead++;
 	}
 
 	size_t readBytes = localHead - this->head;

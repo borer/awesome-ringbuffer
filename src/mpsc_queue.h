@@ -15,6 +15,7 @@ protected:
 	uint8_t begin_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH)];
 	uint8_t* buffer;
 	const size_t capacity;
+	const size_t maxBatchRead;
 	uint8_t end_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH)];
 
 	std::atomic<size_t> head;
@@ -24,7 +25,7 @@ protected:
 	uint8_t tail_pad[(2 * RING_BUFFER_CACHE_LINE_LENGTH) - sizeof(std::atomic<size_t>)];
 
 public:
-	MpscQueue(size_t capacity);
+	MpscQueue(size_t capacity, size_t maxBatchRead);
 	WriteStatus write(const void* message, size_t offset, size_t lenght);
 	size_t read(MessageHandler* handler);
 	size_t getCapacity();

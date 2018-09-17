@@ -142,7 +142,7 @@ int main()
 
 	for (size_t i = 0; i < 10; i++)
 	{
-		SpscQueue myRingBuffer(capacity);
+		SpscQueue myRingBuffer(capacity, 0);
 		prepareBuffer(&myRingBuffer);
 		consumerTask(&myRingBuffer);
 	}
