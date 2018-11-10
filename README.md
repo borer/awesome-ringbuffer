@@ -1,7 +1,7 @@
 # Awesome RingBuffer
 
 
-[![Build Status](https://travis-ci.org/awesome-ringbuffer/cmake-basics.png?branch=master)](https://travis-ci.org/borer/awesome-ringbuffer)
+[![Build Status](https://api.travis-ci.org/borer/awesome-ringbuffer.svg?branch=master)](https://travis-ci.org/borer/awesome-ringbuffer)
 
 Very fast implementation of a circular queue algorithm (aka ring buffer).
 It has various variants :
