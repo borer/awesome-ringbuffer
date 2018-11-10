@@ -4,8 +4,10 @@
 #include <chrono>
 #include <ctime>
 
-#include "spsc_queue_orchestrator.h"
+#include "mpsc_with_multiple_queues_orchestrator.h"
 #include "binutils.h"
+#include "queue.h"
+#include "queue_wait_strategy.h"
 
 typedef struct Message
 {
@@ -20,14 +22,7 @@ public:
 	void onMessage(const uint8_t* buffer, size_t length) final
 	{
 		Message* message = (Message*)buffer;
-		if (msgSequence + 1 == message->sequence)
-		{
-			msgSequence = message->sequence;
-		}
-		else
-		{
-			std::cout << "Expected " << msgSequence + 1 << " got from message " << message->sequence << std::endl;
-		}
+		msgSequence = message->sequence;
 	};
 
 	virtual ~TestMessageHandler()
@@ -35,7 +30,11 @@ public:
 	};
 };
 
-void publisherTask(SpscQueueOrchestrator* queue)
+const size_t numPublishers = 5;
+size_t publisherFinished = 0;
+double messagesPerSecond = 0;
+
+void publisherTask(MpscWithMultipleQueuesOrchestrator* queue, size_t publisherId)
 {
 	uint64_t messagesPerIteration = 268435455;
 	long numIterations = 0;
@@ -49,12 +48,12 @@ void publisherTask(SpscQueueOrchestrator* queue)
 		int numberTries = 0;
 		msg->sequence = numMessage;
 
-		WriteStatus status = queue->write(msg, 0, msgSize);
+		WriteStatus status = queue->write(publisherId, msg, 0, msgSize);
 		
 		while (status != WriteStatus::SUCCESSFUL && numberTries < 1000)
 		{
 			std::this_thread::sleep_for(std::chrono::nanoseconds(10));
-			status = queue->write(msg, 0, msgSize);
+			status = queue->write(publisherId, msg, 0, msgSize);
 			numberTries++;
 		}
 
@@ -66,15 +65,25 @@ void publisherTask(SpscQueueOrchestrator* queue)
 
 			start = end;
 			double elapsedTime = elapsed_seconds.count();
-			double messagesPerSecond = (double)messagesPerIteration / elapsedTime;
-			char numPerSecond[50];
-			sprintf(numPerSecond, "%F", messagesPerSecond);
-			int messageBytes = ALIGN(msgSize, ALIGNMENT) + sizeof(RecordHeader);
-			std::cout << "finished computation at " << std::ctime(&end_time)  
-				<< " elapsed time: " << elapsedTime << "s (270 millions)\n"
-				<< " msg/s : " << numPerSecond << "\n"
-				<< " MiB/s : " << (double)(messagesPerSecond * messageBytes) / 1000000
-				<< std::endl;
+			messagesPerSecond = messagesPerSecond + (double)messagesPerIteration / elapsedTime;
+			
+			publisherFinished++;
+
+			if (publisherFinished == numPublishers)
+			{
+				char numPerSecond[50];
+				sprintf(numPerSecond, "%F", messagesPerSecond);
+				int messageBytes = ALIGN(msgSize, ALIGNMENT) + sizeof(RecordHeader);
+
+				std::cout << "finished computation at " << std::ctime(&end_time)  
+					<< " elapsed time: " << elapsedTime << "s (270 millions)\n"
+					<< " msg/s : " << numPerSecond << "\n"
+					<< " MiB/s : " << (double)(messagesPerSecond * messageBytes) / 1000000
+					<< std::endl;
+
+				publisherFinished = 0;
+				messagesPerSecond = 0;
+			}
 
 			numIterations++;
 			if (numIterations >= 10)
@@ -114,13 +123,28 @@ int main()
 	std::cout << "Init" << std::endl;
 	std::shared_ptr<TestMessageHandler> handler = std::make_shared<TestMessageHandler>();
 	std::shared_ptr<QueueWaitStrategy> waitStrategy = std::make_shared<YieldingStrategy>();
-	SpscQueueOrchestrator myRingBuffer(capacity, 0, handler, waitStrategy);
-	std::cout << "Created RingBuffer with size : " << capacity << std::endl;
+	MpscWithMultipleQueuesOrchestrator myRingBuffer(handler, waitStrategy);
+	std::cout << "Created RingBuffer with size : " << capacity << " with 5 publishers" << std::endl;
+
+	size_t* publisherIds = new size_t[numPublishers];
+
+	for (size_t i = 0; i < numPublishers; i++)
+	{
+		publisherIds[i] = myRingBuffer.addPublisher(capacity, 0);
+	}
 
 	myRingBuffer.startConsumer();
 
-	std::thread publisherThread(publisherTask, &myRingBuffer);
-	publisherThread.join();
+	std::thread* publisherTasks = new std::thread[numPublishers];
+	for (size_t i = 0; i < numPublishers; i++)
+	{
+		publisherTasks[i] = std::thread(publisherTask, &myRingBuffer, publisherIds[i]);
+	}
+
+	for (size_t i = 0; i < numPublishers; i++)
+	{
+		publisherTasks[i].join();
+	}
 
 	myRingBuffer.stopConsumer();
 

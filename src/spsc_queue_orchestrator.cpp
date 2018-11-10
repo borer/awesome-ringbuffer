@@ -11,13 +11,12 @@ SpscQueueOrchestrator::SpscQueueOrchestrator(
 	size_t maxBatchRead, 
 	std::shared_ptr<MessageHandler> handler,
 	std::shared_ptr<QueueWaitStrategy> waitStrategy)
+	: handler(handler), waitStrategy(waitStrategy)
 {
 	assert(handler != nullptr);
 	assert(waitStrategy != nullptr);
 
 	this->queue = std::make_unique<SpscQueue>(capacity, maxBatchRead);
-	this->handler = handler;
-	this->waitStrategy = waitStrategy;
 
 	this->shouldConsume = false;
 	this->isConsumerStarted = false;

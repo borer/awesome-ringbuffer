@@ -3,6 +3,7 @@ message("Building ${RINGBUFFER_LIBRARY_NAME} library")
 set(SOURCES
   spsc_queue.cpp
   mpsc_queue.cpp
+  mpsc_with_multiple_queues_orchestrator.cpp
   spsc_queue_orchestrator.cpp
   queue_wait_strategy.cpp
 )
