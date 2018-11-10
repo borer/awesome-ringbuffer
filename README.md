@@ -68,19 +68,19 @@ size_t readBytes = queue->read((MessageHandler*)handler);
 The source code for the benchmarks is included. Here are the result that I got from a untuned Windows laptop, 8GB of Ram, i5 8th Gen CPU.
 
 Single Producer Single Consumer RingBuffer with size : 1048576 bytes (~ 1Mib)
- elapsed time: 0.822732s (200 millions)
- msg/s : 243,092,378.142349
- MiB/s : 5834.22
+ - elapsed time: 0.822732s (200 millions)
+ - msg/s : 243,092,378.142349
+ - MiB/s : 5834.22
  
  Multi Producer Single Consumer RingBuffer with size : 1048576 bytes (~ 1Mib) (using 2 publisher threads)
- elapsed time: 20.774s (200 millions)
- msg/s : 48,137,109.506653
- MiB/s : 1155.29
+ - elapsed time: 20.774s (200 millions)
+ - msg/s : 48,137,109.506653
+ - MiB/s : 1155.29
  
   Multi Producer Single Consumer Orchestrator with multiple queues (each queue with size : 1048576 bytes (~ 1Mib)) (using 5 publisher threads)
- elapsed time: 9.93218s (200 millions)
- msg/s : 162,887,345.710341
- MiB/s : 3909.3
+ - elapsed time: 9.93218s (200 millions)
+ - msg/s : 162,887,345.710341
+ - MiB/s : 3909.3
 
 License
 ----
